@@ -19,10 +19,10 @@ export function formatHectares(ha) {
 
 export function getSeverityColor(severity) {
   const map = {
-    SEVERE:   '#C0392B',
+    CRITICAL: '#C0392B',
     HIGH:     '#FF4757',
     MODERATE: '#FFA502',
-    LOW:      '#FFA502',
+    LOW:      '#00D4FF',
     MINIMAL:  '#2ED573',
   }
   return map[severity] || '#8B949E'

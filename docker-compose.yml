@@ -1,0 +1,16 @@
+services:
+  backend:
+    build: ./backend
+    container_name: chainreaction-backend
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: chainreaction-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

@@ -4,7 +4,10 @@
       "Bash(netstat -ano)",
       "PowerShell(Stop-Process -Id 16964 -Force -ErrorAction SilentlyContinue)",
       "Bash(pkill -f \"npm run dev\")",
-      "Bash(curl -s -X POST http://localhost:5173/api/simulate -H 'Content-Type: application/json' -d '{\"source_province\":\"Alberta\",\"destination_province\":\"Quebec\",\"population_size\":150000,\"migration_reason\":\"climate_displacement\",\"duration_months\":24}')"
+      "Bash(curl -s -X POST http://localhost:5173/api/simulate -H 'Content-Type: application/json' -d '{\"source_province\":\"Alberta\",\"destination_province\":\"Quebec\",\"population_size\":150000,\"migration_reason\":\"climate_displacement\",\"duration_months\":24}')",
+      "PowerShell(cd \"F:\\\\Hack The Elementts\"; Get-ChildItem -Recurse -File -Exclude node_modules,venv,dist,.git | Where-Object {$_.Extension -match '\\\\.\\(jsx?|tsx?|json|css|md\\)$'} | Select-Object FullName | Sort-Object FullName | Format-List)",
+      "PowerShell(cd \"F:\\\\Hack The Elementts\"; Get-ChildItem -Recurse -File | Where-Object {$_.FullName -notmatch '\\(node_modules|venv|\\\\.git|dist\\)' -and $_.Extension -match '\\\\.\\(jsx?|tsx?|json|css|md\\)$'} | Select-Object @{n='Path';e={$_.FullName.Replace\\(\"F:\\\\Hack The Elementts\\\\\", \"\"\\)}} | Format-List Path)",
+      "Bash(xargs wc -l)"
     ]
   }
 }

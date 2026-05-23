@@ -62,6 +62,8 @@ def run_simulation(req: SimulationRequest):
             "coords": source["coords"],
             "capital": source["capital"],
             "region": source["region"],
+            "species_at_risk": source["species_at_risk"],
+            "watershed_stress": source["watershed_stress"],
         },
         dest_info={
             "name": req.destination_province,
@@ -72,6 +74,8 @@ def run_simulation(req: SimulationRequest):
             "coords": dest["coords"],
             "capital": dest["capital"],
             "region": dest["region"],
+            "species_at_risk": dest["species_at_risk"],
+            "watershed_stress": dest["watershed_stress"],
         },
         population_size=req.population_size,
         migration_reason=req.migration_reason,
@@ -106,9 +110,12 @@ def get_provinces():
             "capital": p["capital"],
             "region": p["region"],
             "population": p["population"],
+            "species_at_risk": p["species_at_risk"],
+            "watershed_stress": p["watershed_stress"],
         }
         for name, p in PROVINCES.items()
     ]
+
 
 
 @router.get("/migration-reasons")

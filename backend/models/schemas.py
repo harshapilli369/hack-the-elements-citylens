@@ -67,6 +67,8 @@ class ProvinceInfo(BaseModel):
     coords: List[float]
     capital: str
     region: str
+    species_at_risk: int
+    watershed_stress: float
 
 
 class SimulationResult(BaseModel):

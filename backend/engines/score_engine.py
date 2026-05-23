@@ -13,7 +13,7 @@ def compute_ecological_scorecard(final_dest: dict, final_src: dict, source: dict
 
     # Severity
     severity_levels = [
-        (80, "SEVERE"),
+        (80, "CRITICAL"),
         (60, "HIGH"),
         (40, "MODERATE"),
         (20, "LOW"),

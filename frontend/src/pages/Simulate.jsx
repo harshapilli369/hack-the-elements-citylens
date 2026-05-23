@@ -23,16 +23,25 @@ export default function Simulate() {
                 className="flex items-center gap-2 text-[#8B949E] hover:text-[#E6EDF3] transition-colors cursor-pointer">
           <span className="text-lg">🌿</span>
           <span className="font-bold text-[#E6EDF3]">Chain Reaction</span>
-          <span className="text-xs font-mono text-[#8B949E] hidden sm:block ml-1">Canada Ecological Model</span>
+          <span className="text-xs font-mono text-[#8B949E] hidden sm:block ml-1">Ecological Model</span>
         </button>
-        {result && (
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#2ED573] animate-pulse" />
-            <span className="text-xs font-mono text-[#8B949E]">
-              {result.source_province} → {result.destination_province} · {result.scorecard.severity}
-            </span>
-          </div>
-        )}
+
+        <div className="flex items-center gap-3">
+          {result && (
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#2ED573] animate-pulse" />
+              <span className="text-xs font-mono text-[#8B949E] hidden sm:block">
+                {result.source_province} → {result.destination_province} · {result.scorecard.severity}
+              </span>
+            </div>
+          )}
+          <button
+            onClick={() => navigate('/cityflow')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#8B949E] hover:text-[#E6EDF3] border border-[#21262D] hover:border-[#30363D] transition-all cursor-pointer"
+          >
+            🏙️ CityFlow
+          </button>
+        </div>
       </nav>
 
       {/* Layout */}
