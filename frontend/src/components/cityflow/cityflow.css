@@ -1,24 +1,26 @@
 .cityflow-container {
-  font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
-  color: #E6EDF3;
-  background-color: #0D1117;
+  font-family: 'Inter', 'Space Grotesk', -apple-system, sans-serif;
+  color: #F5F5F7;
+  background-color: #07080F;
 }
 
+/* ── Glass surfaces ─────────────────────────────────────────────────────── */
 .cityflow-glass {
-  background: rgba(13, 17, 23, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10,11,18,0.75);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
 .cityflow-glass-panel {
-  background: rgba(13, 17, 23, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  background: rgba(10,11,18,0.90);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 24px 48px rgba(0,0,0,0.5);
 }
 
+/* ── City nodes ─────────────────────────────────────────────────────────── */
 .cityflow-node {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -27,176 +29,137 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
   z-index: 10;
 }
+
+.cityflow-node:hover { transform: translate(-50%, -50%) scale(1.15); }
 
 .cityflow-node::before {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 100%;
-  height: 100%;
+  width: 100%; height: 100%;
   border-radius: 50%;
-  border: 2px solid currentColor;
-  opacity: 0.3;
-  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  border: 1.5px solid currentColor;
+  opacity: 0.25;
+  animation: pulse-ring 2.5s cubic-bezier(0.215,0.61,0.355,1) infinite;
 }
 
 .cityflow-node-core {
-  width: 12px;
-  height: 12px;
+  width: 10px; height: 10px;
   border-radius: 50%;
   background-color: currentColor;
-  box-shadow: 0 0 15px currentColor, 0 0 30px currentColor;
+  box-shadow: 0 0 12px currentColor, 0 0 24px rgba(currentColor, 0.3);
   position: relative;
   z-index: 2;
 }
 
 .cityflow-node-bg {
   position: absolute;
-  width: 30px;
-  height: 30px;
+  width: 28px; height: 28px;
   border-radius: 50%;
   background-color: currentColor;
-  opacity: 0.2;
+  opacity: 0.15;
   z-index: 1;
 }
 
-.cityflow-node.healthy  { color: #10b981; }
-.cityflow-node.warning  { color: #f59e0b; }
-.cityflow-node.stressed { color: #f97316; }
-.cityflow-node.critical { color: #ef4444; }
+.cityflow-node.healthy  { color: #30D158; }
+.cityflow-node.warning  { color: #FFD60A; }
+.cityflow-node.stressed { color: #FF9F0A; }
+.cityflow-node.critical { color: #FF375F; }
 
 .cityflow-node.critical::before {
-  border-width: 3px;
-  animation: pulse-ring-critical 1s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  border-width: 2px;
+  opacity: 0.5;
+  animation: pulse-ring-critical 0.9s cubic-bezier(0.215,0.61,0.355,1) infinite;
 }
 
 .cityflow-node.active-disaster .cityflow-node-bg {
-  animation: flicker 0.2s infinite alternate;
-  opacity: 0.6;
+  animation: flicker 0.18s infinite alternate;
+  opacity: 0.5;
 }
 
-@keyframes pulse-ring {
-  0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.6; }
-  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0;   }
-}
-
-@keyframes pulse-ring-critical {
-  0%   { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-  100% { transform: translate(-50%, -50%) scale(3); opacity: 0;   }
-}
-
-@keyframes flicker {
-  0%   { opacity: 0.4; }
-  100% { opacity: 0.8; }
-}
-
+/* ── City label card ────────────────────────────────────────────────────── */
 .cityflow-label {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 14px);
   left: 50%;
   transform: translateX(-50%);
-  margin-top: 12px;
   text-align: center;
   pointer-events: none;
-  background: rgba(13, 17, 23, 0.85);
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(4px);
+  background: rgba(7,8,15,0.88);
+  padding: 6px 12px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   white-space: nowrap;
+  min-width: 110px;
 }
 
 .cityflow-label-name {
-  font-size: 0.85rem;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #E6EDF3;
+  letter-spacing: -0.01em;
+  color: #F5F5F7;
   margin-bottom: 2px;
 }
 
 .cityflow-label-stats {
-  font-size: 0.65rem;
+  font-size: 10px;
   font-family: 'JetBrains Mono', monospace;
-  color: #8B949E;
+  color: rgba(245,245,247,0.45);
 }
 
+/* ── Resource meters ────────────────────────────────────────────────────── */
 .cityflow-meter-track {
-  background: rgba(255, 255, 255, 0.1);
-  height: 6px;
-  border-radius: 3px;
+  background: rgba(255,255,255,0.07);
+  height: 3px;
+  border-radius: 2px;
   overflow: hidden;
   position: relative;
 }
 
 .cityflow-meter-fill {
   height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s ease, background-color 0.3s ease;
-  position: relative;
+  border-radius: 2px;
+  transition: width 0.4s ease, background-color 0.4s ease;
 }
 
-.cityflow-meter-fill::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 10px;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8));
-  filter: blur(2px);
+/* ── Animations ─────────────────────────────────────────────────────────── */
+@keyframes pulse-ring {
+  0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.5; }
+  100% { transform: translate(-50%,-50%) scale(2.8); opacity: 0;   }
 }
 
-.cityflow-btn {
-  transition: all 0.2s ease;
+@keyframes pulse-ring-critical {
+  0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.7; }
+  100% { transform: translate(-50%,-50%) scale(3.2); opacity: 0;   }
 }
 
+@keyframes flicker {
+  0%   { opacity: 0.35; }
+  100% { opacity: 0.6; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Event feed colors ──────────────────────────────────────────────────── */
+.event-info     { color: rgba(245,245,247,0.40); }
+.event-warning  { color: #FF9F0A; }
+.event-critical { color: #FF375F; }
+
+/* ── Utility ────────────────────────────────────────────────────────────── */
+.cityflow-btn { transition: all 0.18s ease; }
 .cityflow-btn:hover  { transform: translateY(-1px); }
-.cityflow-btn:active { transform: translateY(1px); }
-
-.cityflow-disaster-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-}
-
-.cityflow-disaster-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-}
-
-.cityflow-disaster-icon {
-  font-size: 1.5rem;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
-  transition: all 0.3s ease;
-}
-
-.cityflow-disaster-btn:hover .cityflow-disaster-icon {
-  transform: scale(1.1);
-  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.5));
-}
-
-.cityflow-disaster-name {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #8B949E;
-}
-
-.event-info     { color: #8B949E; }
-.event-warning  { color: #f59e0b; }
-.event-critical { color: #ef4444; }
+.cityflow-btn:active { transform: translateY(0px); opacity: 0.85; }

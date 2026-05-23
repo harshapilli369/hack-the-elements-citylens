@@ -7,7 +7,20 @@
       "Bash(curl -s -X POST http://localhost:5173/api/simulate -H 'Content-Type: application/json' -d '{\"source_province\":\"Alberta\",\"destination_province\":\"Quebec\",\"population_size\":150000,\"migration_reason\":\"climate_displacement\",\"duration_months\":24}')",
       "PowerShell(cd \"F:\\\\Hack The Elementts\"; Get-ChildItem -Recurse -File -Exclude node_modules,venv,dist,.git | Where-Object {$_.Extension -match '\\\\.\\(jsx?|tsx?|json|css|md\\)$'} | Select-Object FullName | Sort-Object FullName | Format-List)",
       "PowerShell(cd \"F:\\\\Hack The Elementts\"; Get-ChildItem -Recurse -File | Where-Object {$_.FullName -notmatch '\\(node_modules|venv|\\\\.git|dist\\)' -and $_.Extension -match '\\\\.\\(jsx?|tsx?|json|css|md\\)$'} | Select-Object @{n='Path';e={$_.FullName.Replace\\(\"F:\\\\Hack The Elementts\\\\\", \"\"\\)}} | Format-List Path)",
-      "Bash(xargs wc -l)"
+      "Bash(xargs wc -l)",
+      "Bash(Get-ChildItem -Path \"f:\\\\Hack The Elementts\" -Recurse -Force)",
+      "Bash(Select-Object FullName)",
+      "Bash(find \"f:\\\\\\\\Hack The Elementts\" -type f -not -path \"*/node_modules/*\" -not -path \"*/.git/*\")",
+      "Bash(find \"f:\\\\\\\\Hack The Elementts\" -maxdepth 1 -type f)",
+      "Bash(find \"f:\\\\\\\\Hack The Elementts\\\\\\\\frontend\\\\\\\\src\" -type f -name \"*.jsx\" -o -name \"*.js\" -o -name \"*.tsx\" -o -name \"*.ts\")",
+      "Bash(find \"f:\\\\\\\\Hack The Elementts\\\\\\\\backend\\\\\\\\data\" -type f -name \"*.json\")",
+      "Bash(find \"f:\\\\\\\\Hack The Elementts\\\\\\\\frontend\\\\\\\\src\\\\\\\\components\\\\\\\\cityflow\" -name \"*.jsx\" -o -name \"*.js\")",
+      "Bash(ls -la \"f:\\\\\\\\Hack The Elementts\\\\\\\\frontend\\\\\\\\src\\\\\\\\index.css\")",
+      "Bash(wc -l \"f:\\\\\\\\Hack The Elementts\\\\\\\\frontend\\\\\\\\src\\\\\\\\index.css\")",
+      "Bash(python -c \"import fitz; doc = fitz.open\\('Hack the Elements - Slide Deck \\(2\\).pdf'\\); [print\\(f'--- PAGE {i+1} ---\\\\n{doc[i].get_text\\(\\)}'\\) for i in range\\(len\\(doc\\)\\)]\")",
+      "Bash(python -c \"import pdfplumber; pdf = pdfplumber.open\\('Hack the Elements - Slide Deck \\(2\\).pdf'\\); [print\\(f'--- PAGE {i+1} ---\\\\n{p.extract_text\\(\\)}'\\) for i,p in enumerate\\(pdf.pages\\)]\")",
+      "Bash(pip install *)",
+      "Bash(python -c ' *)"
     ]
   }
 }

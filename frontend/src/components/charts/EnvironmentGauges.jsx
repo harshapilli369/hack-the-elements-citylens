@@ -1,101 +1,102 @@
 import { motion } from 'framer-motion'
-import { RiskGauge } from '../ui/RiskGauge'
-import { formatCarbon, formatHectares, getScoreColor, getCarbonColor } from '../../utils/formatters'
+import { formatHectares } from '../../utils/formatters'
+
+const barColor = (v) => v > 75 ? '#FF375F' : v > 55 ? '#FF9F0A' : v > 35 ? '#FFD60A' : '#30D158'
 
 export function EnvironmentGauges({ scorecard }) {
   const carbonDelta = scorecard.carbon_per_capita_delta
-  // Normalize carbon delta: Alberta = ~58 t/cap above Quebec = worst case → 100
   const carbonScore = Math.min(Math.max((carbonDelta / 60) * 100, 0), 100)
-  // Forest loss score: normalize against 50,000 ha as severe
   const forestScore = Math.min((scorecard.forest_loss_ha / 50000) * 100, 100)
-  // Watershed: already 0-100
   const watershedScore = scorecard.watershed_stress_final
-  // UHI: normalize 6°C = 100
   const uhiScore = Math.min((scorecard.uhi_delta_final_c / 6) * 100, 100)
-  // Biodiversity: inverted (lower index = more pressure)
   const bioScore = Math.max(0, 100 - scorecard.biodiversity_index_final)
 
-  const gauges = [
+  const metrics = [
     {
       label: 'Carbon Shift',
       icon: '🌿',
       value: carbonScore,
-      sub: carbonDelta > 0
+      reading: carbonDelta > 0
         ? `+${carbonDelta.toFixed(1)} t/cap/yr`
-        : `${carbonDelta.toFixed(1)} t/cap/yr (beneficial)`,
+        : `${carbonDelta.toFixed(1)} t/cap/yr`,
       beneficial: carbonDelta <= 0,
     },
     {
       label: 'Habitat Loss',
       icon: '🌲',
       value: forestScore,
-      sub: formatHectares(scorecard.forest_loss_ha) + ' lost',
+      reading: formatHectares(scorecard.forest_loss_ha) + ' lost',
     },
     {
       label: 'Watershed',
       icon: '💧',
       value: watershedScore,
-      sub: `${Math.round(watershedScore)}% stress`,
+      reading: `${Math.round(watershedScore)}% stress`,
     },
     {
       label: 'Heat Island',
       icon: '🌡️',
       value: uhiScore,
-      sub: `+${scorecard.uhi_delta_final_c.toFixed(2)}°C delta`,
+      reading: `+${scorecard.uhi_delta_final_c.toFixed(2)}°C`,
     },
     {
-      label: 'Bio. Pressure',
+      label: 'Biodiversity',
       icon: '🦋',
       value: bioScore,
-      sub: `Index: ${scorecard.biodiversity_index_final.toFixed(0)}/100`,
+      reading: `Index ${scorecard.biodiversity_index_final.toFixed(0)}/100`,
     },
   ]
 
   return (
-    <motion.div
-      className="glass p-6"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
-    >
-      <h3 className="font-mono text-sm uppercase tracking-widest text-[#00D4FF] mb-1">
-        Ecological Stress Indicators
-      </h3>
-      <p className="text-xs text-[#8B949E] mb-4">Destination province pressure at end of projection</p>
-
-      <div className="grid grid-cols-5 gap-2">
-        {gauges.map((g, i) => (
-          <div key={g.label} className="flex flex-col items-center gap-1">
-            <RiskGauge
-              label={g.label}
-              icon={g.icon}
-              value={g.value}
-              delay={i * 0.1}
-              beneficial={g.beneficial}
-            />
-            <div className="text-center">
-              <div className="text-[9px] font-mono text-[#8B949E] leading-tight">{g.sub}</div>
-            </div>
-          </div>
-        ))}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {/* Metric rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {metrics.map((m, i) => {
+          const col = m.beneficial ? '#30D158' : barColor(m.value)
+          return (
+            <motion.div key={m.label}
+              initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06, duration: 0.3 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {/* Label row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ fontSize: 12 }}>{m.icon}</span>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(245,245,247,0.55)' }}>{m.label}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: 'rgba(245,245,247,0.30)' }}>{m.reading}</span>
+                  <span style={{ fontSize: 14, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: col, minWidth: 34, textAlign: 'right' }}>
+                    {Math.round(m.value)}
+                  </span>
+                </div>
+              </div>
+              {/* Bar */}
+              <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(100, m.value)}%` }}
+                  transition={{ delay: i * 0.06 + 0.1, duration: 0.7, ease: 'easeOut' }}
+                  style={{ height: '100%', background: col, borderRadius: 2, boxShadow: m.value > 60 ? `0 0 8px ${col}55` : 'none' }}
+                />
+              </div>
+            </motion.div>
+          )
+        })}
       </div>
 
-      {/* Source rewilding strip */}
-      <div className="mt-4 p-3 rounded-xl flex items-center gap-3"
-           style={{ background: '#0D1117', border: '1px solid #2ED57333' }}>
-        <span className="text-xl">🌱</span>
-        <div>
-          <span className="text-xs font-semibold text-[#2ED573]">Source Province Rewilding: </span>
-          <span className="text-xs font-mono text-[#2ED573]">
-            {formatHectares(scorecard.source_rewilded_ha)}
-          </span>
-          <span className="text-xs text-[#8B949E]"> land entering natural succession · </span>
-          <span className="text-xs font-mono text-[#2ED573]">
-            +{Math.round(scorecard.source_carbon_recovered).toLocaleString()} t CO₂/yr
-          </span>
-          <span className="text-xs text-[#8B949E]"> being sequestered</span>
+      {/* Rewilding strip */}
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+        style={{ marginTop: 20, padding: '12px 14px', borderRadius: 10, background: 'rgba(48,209,88,0.06)', border: '1px solid rgba(48,209,88,0.18)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <span style={{ fontSize: 14, marginTop: 1 }}>🌱</span>
+        <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+          <span style={{ color: '#30D158', fontWeight: 600 }}>Source rewilding: </span>
+          <span style={{ color: '#30D158', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>{formatHectares(scorecard.source_rewilded_ha)}</span>
+          <span style={{ color: 'rgba(245,245,247,0.40)' }}> entering natural succession · </span>
+          <span style={{ color: '#30D158', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>+{Math.round(scorecard.source_carbon_recovered).toLocaleString()} t CO₂/yr</span>
+          <span style={{ color: 'rgba(245,245,247,0.40)' }}> sequestered</span>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   )
 }

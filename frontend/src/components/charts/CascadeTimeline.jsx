@@ -2,37 +2,30 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, ReferenceLine,
-  LineChart, Line,
+  Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 
 const DEST_SERIES = [
-  { key: 'ecological_stress', name: 'Ecological Stress', color: '#FF4757' },
-  { key: 'forest_loss_ha',    name: 'Habitat Lost (ha)',  color: '#FFA502', yAxis: 'right' },
-  { key: 'watershed_stress',  name: 'Watershed Stress',  color: '#00D4FF' },
-  { key: 'uhi_delta_c',       name: 'Heat Island (°C)',  color: '#FF6B35', yAxis: 'right' },
-  { key: 'biodiversity_index',name: 'Biodiversity Index',color: '#2ED573' },
+  { key: 'ecological_stress', name: 'Ecological Stress', color: '#FF375F' },
+  { key: 'watershed_stress',  name: 'Watershed Stress',  color: '#0A84FF' },
+  { key: 'biodiversity_index',name: 'Biodiversity Index',color: '#30D158' },
 ]
 
 const SRC_SERIES = [
-  { key: 'rewilded_ha',          name: 'Rewilded Land (ha)',    color: '#2ED573' },
-  { key: 'carbon_recovered',     name: 'Carbon Recovered (t)', color: '#00D4FF' },
-  { key: 'water_stress_relief',  name: 'Water Stress Relief',  color: '#A29BFE' },
+  { key: 'rewilded_ha',         name: 'Rewilded Land (ha)',   color: '#30D158' },
+  { key: 'carbon_recovered',    name: 'Carbon Recovered (t)', color: '#0A84FF' },
+  { key: 'water_stress_relief', name: 'Water Stress Relief',  color: '#BF5AF2' },
 ]
 
-function CustomTooltip({ active, payload, label, mode }) {
+function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
-  const point = payload[0]?.payload
   return (
-    <div className="glass p-3 border border-[#30363D] text-xs" style={{ minWidth: 200 }}>
-      <div className="font-mono font-bold text-[#00D4FF] mb-2">Month {label}</div>
-      {point?.event && (
-        <div className="text-[#FFA502] mb-2 text-[11px]">⚡ {point.event}</div>
-      )}
+    <div style={{ background: 'rgba(7,8,15,0.95)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 10, padding: '10px 14px', minWidth: 180 }}>
+      <div style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: 'rgba(245,245,247,0.45)', marginBottom: 8 }}>Month {label}</div>
       {payload.map(p => (
-        <div key={p.dataKey} className="flex justify-between gap-4 mb-1">
-          <span style={{ color: p.color }}>{p.name}</span>
-          <span className="font-mono font-bold" style={{ color: p.color }}>
+        <div key={p.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 4 }}>
+          <span style={{ fontSize: 11, color: p.color }}>{p.name}</span>
+          <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: p.color }}>
             {typeof p.value === 'number' ? p.value.toFixed(1) : p.value}
           </span>
         </div>
@@ -51,90 +44,79 @@ export function CascadeTimeline({ destinationTimeline, sourceTimeline }) {
     .slice(0, 3)
     .map(t => t.month)
 
+  const tabColor = activeTab === 'destination' ? '#FF375F' : '#30D158'
+
   return (
-    <motion.div
-      className="glass p-6"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="font-mono text-sm uppercase tracking-widest text-[#00D4FF]">
-            🌿 Ecological Cascade Timeline
-          </h3>
-          <p className="text-xs text-[#8B949E] mt-0.5">Month-by-month impact projection</p>
-        </div>
-        <div className="flex gap-1 p-1 rounded-lg" style={{ background: '#0D1117', border: '1px solid #21262D' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Sub-header with tab toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 11, color: 'rgba(245,245,247,0.30)' }}>Month-by-month ecological impact projection</div>
+        <div style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
           {[
-            { key: 'destination', label: '📍 Destination' },
-            { key: 'source',      label: '🌱 Source' },
+            { key: 'destination', label: 'Destination' },
+            { key: 'source',      label: 'Source'      },
           ].map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all cursor-pointer ${
-                activeTab === tab.key
-                  ? 'bg-[#00D4FF] text-[#0D1117] font-bold'
-                  : 'text-[#8B949E] hover:text-[#E6EDF3]'
-              }`}
-            >
+              style={{
+                padding: '5px 14px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none', transition: 'all 0.15s',
+                background: activeTab === tab.key ? (tab.key === 'destination' ? 'rgba(255,55,95,0.15)' : 'rgba(48,209,88,0.15)') : 'transparent',
+                color: activeTab === tab.key ? (tab.key === 'destination' ? '#FF375F' : '#30D158') : 'rgba(245,245,247,0.35)',
+              }}>
               {tab.label}
             </button>
           ))}
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={290}>
-        <AreaChart data={data} margin={{ top: 5, right: 10, bottom: 20, left: 0 }}>
-          <defs>
-            {series.map(s => (
-              <linearGradient key={s.key} id={`g-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={s.color} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={s.color} stopOpacity={0.02} />
-              </linearGradient>
+      {/* Chart */}
+      <motion.div
+        key={activeTab}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+        <ResponsiveContainer width="100%" height={240}>
+          <AreaChart data={data} margin={{ top: 5, right: 8, bottom: 10, left: -8 }}>
+            <defs>
+              {series.map(s => (
+                <linearGradient key={s.key} id={`g-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={s.color} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={s.color} stopOpacity={0.01} />
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.05)" vertical={false} />
+            <XAxis dataKey="month" stroke="rgba(255,255,255,0.12)"
+                   tick={{ fontSize: 10, fontFamily: 'JetBrains Mono', fill: 'rgba(245,245,247,0.28)' }}
+                   label={{ value: 'Month', position: 'insideBottomRight', fill: 'rgba(245,245,247,0.25)', fontSize: 10, offset: -5 }} />
+            <YAxis stroke="rgba(255,255,255,0.12)"
+                   tick={{ fontSize: 10, fontFamily: 'JetBrains Mono', fill: 'rgba(245,245,247,0.28)' }} />
+            <Tooltip content={<CustomTooltip />} />
+            {activeTab === 'destination' && crisisMonths.map(m => (
+              <ReferenceLine key={m} x={m} stroke="rgba(255,55,95,0.30)" strokeDasharray="3 4"
+                             label={{ value: '⚠', fill: '#FF375F', fontSize: 10, position: 'top' }} />
             ))}
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#21262D" />
-          <XAxis dataKey="month" stroke="#8B949E"
-                 tick={{ fontSize: 11, fontFamily: 'JetBrains Mono' }}
-                 label={{ value: 'Month', position: 'insideBottomRight', fill: '#8B949E', fontSize: 11, offset: -5 }} />
-          <YAxis stroke="#8B949E" tick={{ fontSize: 11, fontFamily: 'JetBrains Mono' }} />
-          <Tooltip content={<CustomTooltip mode={activeTab} />} />
-          <Legend wrapperStyle={{ fontSize: '11px', fontFamily: 'JetBrains Mono', paddingTop: '8px' }}
-                  formatter={(v, e) => <span style={{ color: e.color }}>{v}</span>} />
-
-          {activeTab === 'destination' && crisisMonths.map(m => (
-            <ReferenceLine key={m} x={m} stroke="#FF475544" strokeDasharray="4 3"
-                           label={{ value: '⚠', fill: '#FF4757', fontSize: 11, position: 'top' }} />
-          ))}
-
-          {series.map(s => (
-            <Area key={s.key} type="monotone" dataKey={s.key} name={s.name}
-                  stroke={s.color} fill={`url(#g-${s.key})`}
-                  strokeWidth={2} dot={false}
-                  activeDot={{ r: 4, fill: s.color }} />
-          ))}
-        </AreaChart>
-      </ResponsiveContainer>
+            {series.map(s => (
+              <Area key={s.key} type="monotone" dataKey={s.key} name={s.name}
+                    stroke={s.color} fill={`url(#g-${s.key})`}
+                    strokeWidth={1.5} dot={false}
+                    activeDot={{ r: 4, fill: s.color, strokeWidth: 0 }} />
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
+      </motion.div>
 
       {/* Event annotations */}
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {data
           .filter(t => t.event && !t.event.startsWith('Month'))
           .slice(0, 5)
-          .map(t => {
-            const color = activeTab === 'destination' ? '#FFA502' : '#2ED573'
-            return (
-              <div key={t.month}
-                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs"
-                   style={{ background: `${color}11`, border: `1px solid ${color}33`, color }}>
-                <span className="font-mono font-bold">M{t.month}</span>
-                <span className="truncate max-w-[180px]">{t.event}</span>
-              </div>
-            )
-          })}
+          .map(t => (
+            <div key={t.month} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 7, background: `${tabColor}0A`, border: `1px solid ${tabColor}22` }}>
+              <span style={{ fontSize: 10, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: tabColor }}>M{t.month}</span>
+              <span style={{ fontSize: 10, color: 'rgba(245,245,247,0.40)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.event}</span>
+            </div>
+          ))}
       </div>
-    </motion.div>
+    </div>
   )
 }

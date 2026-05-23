@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { getSeverityColor, formatCarbon, formatHectares } from '../../utils/formatters'
+
+const SEV_COLOR = {
+  Low: '#30D158', Moderate: '#FF9F0A', High: '#FF375F',
+  Critical: '#FF375F', Catastrophic: '#FF375F',
+}
 
 function buildNarrative(result) {
   const { scorecard, source_province, destination_province, population_size, source_info, dest_info } = result
@@ -10,92 +14,80 @@ function buildNarrative(result) {
   const carbonStr = carbonGood
     ? `reducing Canada's annual carbon output by ${(carbonAbs / 1e6).toFixed(1)} million tonnes`
     : `adding ${(carbonAbs / 1e6).toFixed(1)} million tonnes of CO₂ to Canada's annual output`
-
   return [
     `Ecological modelling complete for the movement of ${pop} people from ${source_province} to ${destination_province}.`,
     `This shift crosses two distinct biomes: ${source_info.dominant_biome} gives way to ${dest_info.dominant_biome}.`,
     `The per-person carbon footprint ${carbonGood ? 'decreases' : 'increases'} by ${Math.abs(scorecard.carbon_per_capita_delta).toFixed(1)} tonnes/year — ${carbonStr}.`,
-    `At the destination, an estimated ${formatHectares(scorecard.forest_loss_ha)} of ${dest_info.dominant_biome} habitat will be converted to urban land, fragmenting ${dest_info.species_at_risk} species-at-risk corridors.`,
-    `Urban heat island effect is projected to intensify by ${scorecard.uhi_delta_final_c.toFixed(2)}°C, compounding climate stress in ${dest_info.capital}.`,
-    `At the source, depopulation initiates ecological recovery — ${formatHectares(scorecard.source_rewilded_ha)} of land enters natural succession, sequestering an estimated ${Math.round(scorecard.source_carbon_recovered).toLocaleString()} tonnes CO₂/year by end of projection.`,
+    `At the destination, an estimated ${scorecard.forest_loss_ha.toLocaleString()} ha of ${dest_info.dominant_biome} habitat will be converted to urban land, fragmenting ${dest_info.species_at_risk} species-at-risk corridors.`,
+    `Urban heat island effect is projected to intensify by ${scorecard.uhi_delta_final_c.toFixed(2)}°C in ${dest_info.capital}.`,
+    `At the source, depopulation initiates ecological recovery — ${scorecard.source_rewilded_ha.toLocaleString()} ha enters natural succession, sequestering an estimated ${Math.round(scorecard.source_carbon_recovered).toLocaleString()} tonnes CO₂/year.`,
     `Net ecological verdict: ${scorecard.severity} impact. Recovery timeline at source: ~${scorecard.recovery_years_estimate} years.`,
-  ]
+  ].join(' ')
 }
 
-function TypewriterText({ lines, speed = 15 }) {
+function TypewriterText({ text, speed = 12 }) {
   const [displayed, setDisplayed] = useState('')
-  const fullText = lines.join(' ')
 
   useEffect(() => {
     setDisplayed('')
     let i = 0
     const iv = setInterval(() => {
-      if (i < fullText.length) { setDisplayed(fullText.slice(0, ++i)) }
+      if (i < text.length) { setDisplayed(text.slice(0, ++i)) }
       else clearInterval(iv)
     }, speed)
     return () => clearInterval(iv)
-  }, [fullText, speed])
+  }, [text, speed])
 
   return (
-    <p className="font-mono text-sm leading-relaxed text-[#00D4FF]">
+    <p style={{ fontSize: 12, lineHeight: 1.75, color: 'rgba(245,245,247,0.65)', fontFamily: 'JetBrains Mono, monospace' }}>
       {displayed}
-      <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.6, repeat: Infinity }}>
-        |
-      </motion.span>
+      <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.5, repeat: Infinity }} style={{ color: '#30D158' }}>|</motion.span>
     </p>
   )
 }
 
 export function AIInsightPanel({ result }) {
-  const lines = buildNarrative(result)
   const { scorecard, source_info, dest_info } = result
-  const color = getSeverityColor(scorecard.severity)
+  const text = buildNarrative(result)
+  const sevColor = SEV_COLOR[scorecard.severity] || '#FF9F0A'
   const carbonGood = scorecard.carbon_is_beneficial
 
   const metrics = [
-    { label: 'Biome Crossed',    value: `${source_info.dominant_biome.split('/')[0].trim()} → ${dest_info.dominant_biome.split('/')[0].trim()}`, icon: '🌲', color: '#00D4FF' },
-    { label: 'Net Carbon',       value: carbonGood ? 'Beneficial' : 'Harmful', icon: '🌿', color: carbonGood ? '#2ED573' : '#FF4757' },
-    { label: 'Est. Recovery',    value: `~${scorecard.recovery_years_estimate} yr`, icon: '⏱️', color: '#FFA502' },
+    { label: 'Biome Crossed', value: `${source_info.dominant_biome.split('/')[0].trim()} → ${dest_info.dominant_biome.split('/')[0].trim()}` },
+    { label: 'Net Carbon',    value: carbonGood ? 'Beneficial' : 'Harmful', color: carbonGood ? '#30D158' : '#FF375F' },
+    { label: 'Est. Recovery', value: `~${scorecard.recovery_years_estimate} yr`, color: '#FFD60A' },
   ]
 
   return (
-    <motion.div
-      className="glass p-6 neon-border"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.45 }}
-    >
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-             style={{ background: '#00D4FF15', border: '1px solid #00D4FF33' }}>
-          🧠
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🧠</div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#F5F5F7' }}>Ecological Intelligence</div>
+            <div style={{ fontSize: 10, color: 'rgba(245,245,247,0.30)' }}>AI-generated ecosystem analysis</div>
+          </div>
         </div>
-        <div>
-          <h3 className="font-mono text-sm uppercase tracking-widest text-[#00D4FF]">
-            Ecological Intelligence Briefing
-          </h3>
-          <p className="text-xs text-[#8B949E]">AI-generated ecosystem analysis</p>
+        <div style={{ padding: '4px 12px', borderRadius: 8, background: `${sevColor}12`, border: `1px solid ${sevColor}30`, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: sevColor }}>
+          {scorecard.severity.toUpperCase()}
         </div>
-        <span className="ml-auto px-2.5 py-1 rounded-full text-xs font-mono font-bold border"
-              style={{ background: `${color}15`, borderColor: `${color}44`, color }}>
-          {scorecard.severity}
-        </span>
       </div>
 
-      <div className="rounded-xl p-4 mb-4" style={{ background: '#0D1117', border: '1px solid #21262D' }}>
-        <TypewriterText lines={lines} speed={14} />
+      {/* Typewriter narrative */}
+      <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <TypewriterText text={text} speed={12} />
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      {/* 3 mini metrics */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
         {metrics.map(m => (
-          <div key={m.label} className="rounded-lg p-3 text-center"
-               style={{ background: '#0D1117', border: '1px solid #21262D' }}>
-            <div className="text-lg mb-1">{m.icon}</div>
-            <div className="font-mono text-xs font-bold leading-tight" style={{ color: m.color }}>{m.value}</div>
-            <div className="text-[10px] text-[#8B949E] mt-0.5">{m.label}</div>
+          <div key={m.label} style={{ padding: '12px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
+            <div style={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: m.color || '#F5F5F7', lineHeight: 1.3, marginBottom: 4 }}>{m.value}</div>
+            <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(245,245,247,0.28)' }}>{m.label}</div>
           </div>
         ))}
       </div>
-    </motion.div>
+    </div>
   )
 }
