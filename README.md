@@ -1,6 +1,6 @@
 # ⚡ Chain Reaction
 
-> **Predicting cascading environmental crises caused by sudden human displacement.**
+> **Visualizing how climate disasters trigger cascading urban migration crises.**
 
 Chain Reaction is an integrated predictive environmental intelligence platform that models how sudden population influx from conflict, flooding, drought, or economic collapse triggers interconnected failures across water, air, land, waste, and infrastructure systems.
 
@@ -8,17 +8,21 @@ Chain Reaction is an integrated predictive environmental intelligence platform t
 
 ## The Problem
 
-When 750,000 people flee conflict and arrive in a single city overnight, they don't just need shelter. They trigger **cascading environmental failures** across:
+A climate disaster or conflict in one region does not stay isolated.
 
-- 💧 Water supply systems
-- 🌫️ Air quality (AQI)
-- 🌍 Land use and encroachment
-- ♻️ Waste management overflow
-- 🏗️ Infrastructure grid load
+When thousands of displaced people suddenly move into a nearby city, the city’s infrastructure begins to absorb enormous pressure:
 
-These systems reinforce each other. Waste overflow spikes AQI. Water stress clusters populations near water sources, increasing land pressure. Infrastructure overload cascades into secondary displacement.
+- housing fills rapidly,
+- water demand spikes,
+- waste systems overflow,
+- pollution increases,
+- public infrastructure becomes unstable.
 
-**Existing monitoring systems track these independently and reactively.** Chain Reaction models them as an interconnected web — predicting the cascade before it becomes irreversible.
+As one city becomes overloaded, people begin moving again - creating a cascading chain reaction across multiple connected cities.
+
+Existing systems monitor these environmental and humanitarian issues separately and react only after damage becomes visible.
+
+Chain Reaction simulates these crises as interconnected systems in motion, helping visualize how human displacement can destabilize entire urban networks before collapse occurs.
 
 ---
 
@@ -27,6 +31,9 @@ These systems reinforce each other. Waste overflow spikes AQI. Water stress clus
 | Feature | Description |
 |---------|-------------|
 | ⚡ Cascade Simulation Engine | Formula-based multi-system stress modeling |
+| 👥 Live Migration Simulation | Animated human movement between connected cities |
+| 🌡️ Resource Saturation Engine | Housing, water, waste, AQI, and infrastructure dynamically fill toward critical thresholds |
+| 🔁 Cascade Spillover Logic | Overloaded cities trigger secondary migration into nearby cities |
 | 🗺️ Interactive Crisis Map | Dark Leaflet map with animated migration routes and heatmaps |
 | 📊 Cascade Timeline | Month-by-month area chart showing system degradation |
 | 🎯 Risk Gauges | 5 animated circular gauges — Water, Air, Land, Waste, Infra |
@@ -98,6 +105,14 @@ GET  /api/health       — Health check
 
 ## Environmental Modeling
 
+Chain Reaction models cities as interconnected systems where population influx dynamically impacts the water demand, air quality, housing pressure, waster generation etc.
+
+As resource usage approaches capacity:
+
+cities transition from stable → stressed → critical,
+environmental degradation accelerates,
+and secondary migration events can occur.
+
 ### Core Formulas
 
 **Water Stress:**
@@ -130,11 +145,12 @@ risk = water×0.28 + aqi×0.18 + land×0.14 + waste×0.20 + infra×0.20
 
 ## Preset Scenarios
 
-| Scenario | Source | Destination | Population | Cause |
-|----------|--------|-------------|------------|-------|
-| Nairobi Crisis | South Sudan | Nairobi | 750K | Armed Conflict |
-| Jordan Strain | Syria | Amman | 1.2M | Armed Conflict |
-| Bangladesh Flood | Bangladesh Coast | Cox's Bazar | 900K | Flooding |
+| Scenario | Trigger | Cascade Path | 
+|----------|---------|--------------|
+| Atlantic Wildfire | Halifax wildfire | Halifax → Truro → Moncton |
+| Coastal Flooding | Sea level rise | Moncton → Saint John |
+| Drought Pressure | Water scarcity | Rural NS → Halifax |
+
 
 ---
 
@@ -163,6 +179,17 @@ FastAPI Backend
 
 ---
 
+## Simulation Flow
+A disaster or pressure event is triggered.
+Populations begin migrating toward connected cities.
+Destination cities absorb incoming population pressure.
+Resource systems dynamically fill toward capacity.
+Environmental conditions worsen in real time.
+Overloaded cities trigger secondary migration.
+Cascading regional instability emerges across the network.
+
+---
+
 ## Future Scope
 
 - Satellite integration (Sentinel-2 land change detection)
@@ -176,5 +203,6 @@ FastAPI Backend
 ---
 
 ## Team
+This is a simulation and scenario-modeling platform, not a predictive forecasting system.
 
-Built at Hack The Elements · 36 hours · 2024
+Built at Hack The Elements 
