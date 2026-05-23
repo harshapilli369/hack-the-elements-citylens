@@ -1,0 +1,47 @@
+{
+  "economic_opportunity": {
+    "label": "Economic Opportunity",
+    "icon": "💼",
+    "description": "Jobs, higher wages, industry expansion",
+    "migration_speed": 1.2,
+    "urban_density_multiplier": 1.3,
+    "land_conversion_rate": 1.2,
+    "construction_emission_factor": 1.2
+  },
+  "housing_affordability": {
+    "label": "Housing Affordability",
+    "icon": "🏠",
+    "description": "Escaping high-cost cities for cheaper regions",
+    "migration_speed": 1.0,
+    "urban_density_multiplier": 0.9,
+    "land_conversion_rate": 1.4,
+    "construction_emission_factor": 1.1
+  },
+  "climate_amenity": {
+    "label": "Climate & Lifestyle",
+    "icon": "🌤️",
+    "description": "Seeking milder weather or natural amenities",
+    "migration_speed": 0.8,
+    "urban_density_multiplier": 0.7,
+    "land_conversion_rate": 1.6,
+    "construction_emission_factor": 1.0
+  },
+  "resource_industry": {
+    "label": "Resource Industry",
+    "icon": "⛏️",
+    "description": "Oil, gas, mining, or forestry employment",
+    "migration_speed": 1.5,
+    "urban_density_multiplier": 1.1,
+    "land_conversion_rate": 1.8,
+    "construction_emission_factor": 1.6
+  },
+  "climate_displacement": {
+    "label": "Climate Displacement",
+    "icon": "🌊",
+    "description": "Flooding, wildfire, or extreme weather forcing relocation",
+    "migration_speed": 1.8,
+    "urban_density_multiplier": 1.4,
+    "land_conversion_rate": 1.3,
+    "construction_emission_factor": 1.3
+  }
+}

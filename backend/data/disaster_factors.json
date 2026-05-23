@@ -1,0 +1,42 @@
+{
+  "conflict": {
+    "migration_speed_multiplier": 1.8,
+    "infrastructure_shock": 1.4,
+    "health_risk_multiplier": 1.6,
+    "label": "Armed Conflict",
+    "icon": "⚔️",
+    "description": "War, civil unrest, or violent displacement"
+  },
+  "flood": {
+    "migration_speed_multiplier": 1.5,
+    "infrastructure_shock": 1.6,
+    "health_risk_multiplier": 1.3,
+    "label": "Flooding",
+    "icon": "🌊",
+    "description": "Monsoons, sea-level rise, or dam failure"
+  },
+  "drought": {
+    "migration_speed_multiplier": 1.2,
+    "infrastructure_shock": 1.2,
+    "health_risk_multiplier": 1.5,
+    "label": "Drought",
+    "icon": "🏜️",
+    "description": "Water scarcity, failed harvests"
+  },
+  "earthquake": {
+    "migration_speed_multiplier": 2.0,
+    "infrastructure_shock": 2.0,
+    "health_risk_multiplier": 1.8,
+    "label": "Earthquake",
+    "icon": "🌋",
+    "description": "Seismic destruction and aftershocks"
+  },
+  "economic_collapse": {
+    "migration_speed_multiplier": 1.3,
+    "infrastructure_shock": 1.1,
+    "health_risk_multiplier": 1.2,
+    "label": "Economic Collapse",
+    "icon": "📉",
+    "description": "Hyperinflation, currency crisis, or state failure"
+  }
+}

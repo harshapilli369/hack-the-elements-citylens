@@ -1,0 +1,122 @@
+{
+  "Nairobi": {
+    "population": 4500000,
+    "water_stress_baseline": 45,
+    "aqi_baseline": 62,
+    "waste_capacity_pct": 78,
+    "land_available_km2": 120,
+    "infrastructure_load_pct": 71,
+    "gdp_per_capita": 1800,
+    "coords": [-1.2921, 36.8219],
+    "country": "Kenya",
+    "region": "Sub-Saharan Africa"
+  },
+  "Amman": {
+    "population": 4100000,
+    "water_stress_baseline": 72,
+    "aqi_baseline": 58,
+    "waste_capacity_pct": 65,
+    "land_available_km2": 85,
+    "infrastructure_load_pct": 83,
+    "gdp_per_capita": 4200,
+    "coords": [31.9454, 35.9284],
+    "country": "Jordan",
+    "region": "Middle East"
+  },
+  "Dhaka": {
+    "population": 21000000,
+    "water_stress_baseline": 68,
+    "aqi_baseline": 148,
+    "waste_capacity_pct": 82,
+    "land_available_km2": 45,
+    "infrastructure_load_pct": 88,
+    "gdp_per_capita": 2500,
+    "coords": [23.8103, 90.4125],
+    "country": "Bangladesh",
+    "region": "South Asia"
+  },
+  "Karachi": {
+    "population": 16000000,
+    "water_stress_baseline": 74,
+    "aqi_baseline": 172,
+    "waste_capacity_pct": 71,
+    "land_available_km2": 98,
+    "infrastructure_load_pct": 85,
+    "gdp_per_capita": 1600,
+    "coords": [24.8607, 67.0011],
+    "country": "Pakistan",
+    "region": "South Asia"
+  },
+  "Lagos": {
+    "population": 15000000,
+    "water_stress_baseline": 55,
+    "aqi_baseline": 95,
+    "waste_capacity_pct": 74,
+    "land_available_km2": 135,
+    "infrastructure_load_pct": 79,
+    "gdp_per_capita": 2100,
+    "coords": [6.5244, 3.3792],
+    "country": "Nigeria",
+    "region": "West Africa"
+  },
+  "Istanbul": {
+    "population": 15500000,
+    "water_stress_baseline": 48,
+    "aqi_baseline": 55,
+    "waste_capacity_pct": 62,
+    "land_available_km2": 180,
+    "infrastructure_load_pct": 76,
+    "gdp_per_capita": 9500,
+    "coords": [41.0082, 28.9784],
+    "country": "Turkey",
+    "region": "Europe/Middle East"
+  },
+  "Kampala": {
+    "population": 3500000,
+    "water_stress_baseline": 41,
+    "aqi_baseline": 72,
+    "waste_capacity_pct": 80,
+    "land_available_km2": 88,
+    "infrastructure_load_pct": 68,
+    "gdp_per_capita": 900,
+    "coords": [0.3476, 32.5825],
+    "country": "Uganda",
+    "region": "East Africa"
+  },
+  "Beirut": {
+    "population": 2400000,
+    "water_stress_baseline": 78,
+    "aqi_baseline": 65,
+    "waste_capacity_pct": 58,
+    "land_available_km2": 32,
+    "infrastructure_load_pct": 91,
+    "gdp_per_capita": 3800,
+    "coords": [33.8938, 35.5018],
+    "country": "Lebanon",
+    "region": "Middle East"
+  },
+  "Cox's Bazar": {
+    "population": 700000,
+    "water_stress_baseline": 52,
+    "aqi_baseline": 88,
+    "waste_capacity_pct": 88,
+    "land_available_km2": 22,
+    "infrastructure_load_pct": 92,
+    "gdp_per_capita": 800,
+    "coords": [21.4272, 92.0058],
+    "country": "Bangladesh",
+    "region": "South Asia"
+  },
+  "Addis Ababa": {
+    "population": 5000000,
+    "water_stress_baseline": 50,
+    "aqi_baseline": 78,
+    "waste_capacity_pct": 76,
+    "land_available_km2": 140,
+    "infrastructure_load_pct": 72,
+    "gdp_per_capita": 1100,
+    "coords": [9.0320, 38.7469],
+    "country": "Ethiopia",
+    "region": "East Africa"
+  }
+}

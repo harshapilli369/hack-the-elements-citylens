@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(venv\\\\Scripts\\\\pip install *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('ID:', d['id']\\); print\\('Severity:', d['scorecard']['severity']\\); print\\('Composite risk:', d['risk_scores']['composite_risk']\\); print\\('Collapse prob:', d['scorecard']['collapse_probability']\\); print\\('Timeline months:', len\\(d['timeline']\\)\\); print\\('Recs:', len\\(d['recommendations']\\)\\)\")",
+      "Bash(curl -s -X POST http://localhost:8000/api/simulate -H 'Content-Type: application/json' -d '{\"source_id\":\"south_sudan\",\"destination_city\":\"Nairobi\",\"population_size\":750000,\"disaster_cause\":\"conflict\",\"duration_months\":12,\"interventions\":[]}')",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:5173/api/cities)",
+      "Bash(curl -s -X POST http://localhost:5173/api/simulate -H 'Content-Type: application/json' -d '{\"source_id\":\"syria\",\"destination_city\":\"Amman\",\"population_size\":1200000,\"disaster_cause\":\"conflict\",\"duration_months\":18,\"interventions\":[\"water_allocation\",\"waste_management\"]}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/simulate -H 'Content-Type: application/json' -d '{\"source_province\":\"New Brunswick\",\"destination_province\":\"Alberta\",\"population_size\":200000,\"migration_reason\":\"resource_industry\",\"duration_months\":24}')",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}

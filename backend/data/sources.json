@@ -1,0 +1,14 @@
+[
+  { "id": "south_sudan", "name": "South Sudan", "coords": [4.8594, 31.5713], "region": "East Africa" },
+  { "id": "syria", "name": "Syria", "coords": [34.8021, 38.9968], "region": "Middle East" },
+  { "id": "somalia", "name": "Somalia", "coords": [5.1521, 46.1996], "region": "East Africa" },
+  { "id": "myanmar", "name": "Myanmar", "coords": [17.1168, 95.9560], "region": "Southeast Asia" },
+  { "id": "ukraine", "name": "Ukraine", "coords": [48.3794, 31.1656], "region": "Europe" },
+  { "id": "yemen", "name": "Yemen", "coords": [15.5527, 48.5164], "region": "Middle East" },
+  { "id": "sudan", "name": "Sudan", "coords": [12.8628, 30.2176], "region": "East Africa" },
+  { "id": "afghanistan", "name": "Afghanistan", "coords": [33.9391, 67.7100], "region": "South Asia" },
+  { "id": "dr_congo", "name": "DR Congo", "coords": [-4.0383, 21.7587], "region": "Central Africa" },
+  { "id": "haiti", "name": "Haiti", "coords": [18.9712, -72.2852], "region": "Caribbean" },
+  { "id": "sahel", "name": "Sahel Region", "coords": [14.7, 2.2], "region": "West Africa" },
+  { "id": "bangladesh_coast", "name": "Bangladesh Coast", "coords": [22.3475, 91.1237], "region": "South Asia" }
+]
