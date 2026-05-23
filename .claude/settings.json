@@ -20,7 +20,10 @@
       "Bash(python -c \"import fitz; doc = fitz.open\\('Hack the Elements - Slide Deck \\(2\\).pdf'\\); [print\\(f'--- PAGE {i+1} ---\\\\n{doc[i].get_text\\(\\)}'\\) for i in range\\(len\\(doc\\)\\)]\")",
       "Bash(python -c \"import pdfplumber; pdf = pdfplumber.open\\('Hack the Elements - Slide Deck \\(2\\).pdf'\\); [print\\(f'--- PAGE {i+1} ---\\\\n{p.extract_text\\(\\)}'\\) for i,p in enumerate\\(pdf.pages\\)]\")",
       "Bash(pip install *)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(python -c \"from routers import realtime; print\\('OK'\\)\")",
+      "Bash(venv\\\\Scripts\\\\python -c \"from routers import realtime; print\\('OK'\\)\")",
+      "Bash(npx vite *)"
     ]
   }
 }

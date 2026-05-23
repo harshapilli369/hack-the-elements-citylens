@@ -12,7 +12,7 @@ const TABS = [
   { id: 'events',    label: 'Events'    },
 ]
 
-export function ControlPanel() {
+export function ControlPanel({ width = 320 }) {
   const [activeTab, setActiveTab] = useState('disasters')
   const events         = useCityFlowStore(state => state.events)
   const selectedCityId = useCityFlowStore(state => state.sim.selectedCity)
@@ -28,7 +28,7 @@ export function ControlPanel() {
   const criticalCount = events.filter(e => e.severity === 'critical').length
 
   return (
-    <div style={{ width: 320, flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ width, flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', gap: 12, transition: 'width 0.05s' }}>
 
       {/* Segmented tab control */}
       <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: 4, display: 'flex', gap: 2 }}>

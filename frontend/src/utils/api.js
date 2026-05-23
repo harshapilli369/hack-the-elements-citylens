@@ -17,4 +17,9 @@ export async function fetchMigrationReasons() {
   return data
 }
 
+export async function fetchRealtime() {
+  const { data } = await api.get('/realtime')
+  return data
+}
+
 export default api

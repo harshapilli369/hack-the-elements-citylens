@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useRealtimeData, aqiBand } from '../../store/realtimeStore'
 
 const BAR_COLOR = (v) => v > 75 ? '#FF375F' : v > 55 ? '#FF9F0A' : v > 35 ? '#FFD60A' : '#30D158'
 const clamp = (n) => Math.round(Math.min(Math.max(n, 0), 100))
@@ -14,9 +15,11 @@ const PROV_PROFILE = {
 
 function getProfile(name) { return PROV_PROFILE[name] || PROV_PROFILE['Nova Scotia'] }
 
-function buildIndicators(scorecard, srcInfo, dstInfo) {
+function buildIndicators(scorecard, srcInfo, dstInfo, live) {
   const sc   = scorecard
   const prof = getProfile(dstInfo?.name)
+  // live = province-level realtime aggregate (may be null)
+  const L = live || {}
 
   const carbonStress  = clamp((sc.carbon_per_capita_delta / 60) * 100)
   const forestStress  = clamp((sc.forest_loss_ha / 50000) * 100)
@@ -28,13 +31,24 @@ function buildIndicators(scorecard, srcInfo, dstInfo) {
   const pollutionStr  = clamp(carbonStress * 0.65 + uhiStress * 0.35)
   const rewild        = clamp((sc.source_rewilded_ha / 8000) * 100)
 
+  // Live overrides — use real readings where available, mark them
+  const liveSst  = L.sea_surface_temp_c
+  const livePm25 = L.pm25
+  const liveOzone = L.ozone_ppb
+  const liveNo2  = L.no2_ppb
+  const liveAqi  = L.aqi
+  const liveTemp = L.temperature_c
+
   return {
     marine: [
       {
         name: 'Sea Surface Temperature',
-        stress: clamp(uhiStress * 0.55 + 10),
-        reading: `+${(sc.uhi_delta_final_c * 0.38).toFixed(2)}°C vs baseline`,
-        trend: sc.uhi_delta_final_c > 0.5 ? 'bad-up' : 'stable',
+        stress: liveSst != null
+          ? clamp(Math.max(0, (liveSst - prof.sst) / prof.sst * 100 + uhiStress * 0.2))
+          : clamp(uhiStress * 0.55 + 10),
+        reading: liveSst != null ? `${liveSst}°C (live)` : `+${(sc.uhi_delta_final_c * 0.38).toFixed(2)}°C vs baseline`,
+        trend: (liveSst != null ? liveSst > prof.sst + 1 : sc.uhi_delta_final_c > 0.5) ? 'bad-up' : 'stable',
+        live: liveSst != null,
       },
       {
         name: 'Ocean Acidification (pH)',
@@ -122,27 +136,31 @@ function buildIndicators(scorecard, srcInfo, dstInfo) {
     atmospheric: [
       {
         name: 'Particulate Matter PM₂.₅',
-        stress: clamp(pollutionStr * 0.65 + 12),
-        reading: `${(7.8 + pollutionStr * 0.08).toFixed(1)} μg/m³`,
-        trend: pollutionStr > 28 ? 'bad-up' : 'stable',
+        stress: livePm25 != null ? clamp(livePm25 * 4) : clamp(pollutionStr * 0.65 + 12),
+        reading: livePm25 != null ? `${livePm25} μg/m³ • live` : `${(7.8 + pollutionStr * 0.08).toFixed(1)} μg/m³`,
+        trend: (livePm25 != null ? livePm25 > 12 : pollutionStr > 28) ? 'bad-up' : 'stable',
+        live: livePm25 != null,
       },
       {
         name: 'SO₂ & NOₓ Pollutants',
-        stress: clamp(carbonStress * 0.58 + 14),
-        reading: `+${(Math.abs(sc.carbon_per_capita_delta) * 0.07).toFixed(1)} ppb above baseline`,
+        stress: liveNo2 != null ? clamp(liveNo2 * 2) : clamp(carbonStress * 0.58 + 14),
+        reading: liveNo2 != null ? `NO₂ ${liveNo2.toFixed(1)} μg/m³ • live` : `+${(Math.abs(sc.carbon_per_capita_delta) * 0.07).toFixed(1)} ppb above baseline`,
         trend: sc.carbon_per_capita_delta > 0 ? 'bad-up' : 'good-down',
+        live: liveNo2 != null,
       },
       {
         name: 'Ground-Level Ozone O₃',
-        stress: clamp(uhiStress * 0.72 + carbonStress * 0.12 + 8),
-        reading: `${(36 + uhiStress * 0.14).toFixed(0)} ppb`,
-        trend: uhiStress > 28 ? 'bad-up' : 'stable',
+        stress: liveOzone != null ? clamp(liveOzone * 1.5) : clamp(uhiStress * 0.72 + carbonStress * 0.12 + 8),
+        reading: liveOzone != null ? `${liveOzone.toFixed(1)} μg/m³ • live` : `${(36 + uhiStress * 0.14).toFixed(0)} ppb`,
+        trend: (liveOzone != null ? liveOzone > 60 : uhiStress > 28) ? 'bad-up' : 'stable',
+        live: liveOzone != null,
       },
       {
         name: 'Precipitation pH',
         stress: clamp(carbonStress * 0.38 + 14),
         reading: `pH ${(5.65 - carbonStress * 0.004).toFixed(2)}`,
         trend: sc.carbon_per_capita_delta > 0 ? 'bad-down' : 'stable',
+        live: false,
       },
     ],
     freshwater: [
@@ -222,11 +240,35 @@ function trendDisplay(trend) {
 
 export function AtlanticIndicatorsPanel({ scorecard, sourceInfo, destInfo }) {
   const [activeTab, setActiveTab] = useState('marine')
-  const indicators = buildIndicators(scorecard, sourceInfo, destInfo)
+  const { data: realtime, isLoading: liveLoading } = useRealtimeData()
+  const liveProvince = realtime?.provinces?.[destInfo?.name]
+  const indicators = buildIndicators(scorecard, sourceInfo, destInfo, liveProvince)
   const rows = indicators[activeTab] || []
+  const liveCount = Object.values(indicators).flat().filter(r => r.live).length
 
   return (
     <div>
+      {/* Live status header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(245,245,247,0.25)' }}>
+          26 indicators · {destInfo?.name || 'Destination'}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {liveLoading && <span style={{ fontSize: 10, color: 'rgba(245,245,247,0.28)', fontFamily: 'JetBrains Mono, monospace' }}>fetching live…</span>}
+          {!liveLoading && liveProvince && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 20, background: 'rgba(48,209,88,0.08)', border: '1px solid rgba(48,209,88,0.22)' }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#30D158', display: 'inline-block', animation: 'dangerPulse 1.8s infinite' }} />
+              <span style={{ fontSize: 10, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#30D158' }}>LIVE · {liveCount} real readings</span>
+            </div>
+          )}
+          {!liveLoading && !liveProvince && (
+            <div style={{ fontSize: 10, fontFamily: 'JetBrains Mono, monospace', color: 'rgba(245,245,247,0.22)', padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)' }}>
+              Modelled estimates
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, overflowX: 'auto', paddingBottom: 2 }}>
         {TABS.map(t => {
@@ -282,6 +324,9 @@ export function AtlanticIndicatorsPanel({ scorecard, sourceInfo, destInfo }) {
                     <span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(245,245,247,0.60)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {ind.name}
                     </span>
+                    {ind.live && (
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#30D158', flexShrink: 0, animation: 'dangerPulse 2s infinite' }} />
+                    )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                     <span style={{ fontSize: 10, fontFamily: 'JetBrains Mono, monospace', color: 'rgba(245,245,247,0.26)', whiteSpace: 'nowrap' }}>{ind.reading}</span>
@@ -307,8 +352,8 @@ export function AtlanticIndicatorsPanel({ scorecard, sourceInfo, destInfo }) {
       </AnimatePresence>
 
       {/* Footer */}
-      <div style={{ marginTop: 20, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', flex: 1 }}>
+      <div style={{ marginTop: 20, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           {[{ sym: '↑', col: '#FF375F', lbl: 'Worsening' }, { sym: '↓', col: '#FF9F0A', lbl: 'Declining' }, { sym: '↑', col: '#30D158', lbl: 'Recovering' }, { sym: '→', col: 'rgba(245,245,247,0.25)', lbl: 'Stable' }].map(l => (
             <div key={l.lbl} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: l.col }}>{l.sym}</span>
@@ -316,8 +361,15 @@ export function AtlanticIndicatorsPanel({ scorecard, sourceInfo, destInfo }) {
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 10, color: 'rgba(245,245,247,0.22)', textAlign: 'right', flexShrink: 0 }}>
-          Stress score 0–100 · {destInfo?.name || 'Destination'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {liveProvince?.temperature_c != null && (
+            <span style={{ fontSize: 10, fontFamily: 'JetBrains Mono, monospace', color: 'rgba(245,245,247,0.35)' }}>
+              {destInfo?.name}: {liveProvince.temperature_c}°C · AQI {liveProvince.aqi ?? '—'}
+            </span>
+          )}
+          <span style={{ fontSize: 10, color: 'rgba(245,245,247,0.18)' }}>
+            {liveProvince ? 'Open-Meteo · refreshes 5 min' : 'Stress 0–100'}
+          </span>
         </div>
       </div>
     </div>

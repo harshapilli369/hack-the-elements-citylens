@@ -43,6 +43,10 @@ function useSituationReport(cities, migrants, activeDisasters, cascadeCount, mig
 export default function CityFlowSimulator() {
   const navigate      = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [panelWidth, setPanelWidth] = useState(320)
+  const isDragging = useRef(false)
+  const dragStartX = useRef(0)
+  const dragStartWidth = useRef(320)
 
   const tick              = useCityFlowStore(state => state.tick)
   const isRunning         = useCityFlowStore(state => state.sim.isRunning)
@@ -121,6 +125,29 @@ export default function CityFlowSimulator() {
     clearTimeout(summaryTimer.current)
     summaryTimer.current = setTimeout(() => setDisasterSummary(null), 12000)
   }, [events, cities])
+
+  function handlePanelDragStart(e) {
+    isDragging.current = true
+    dragStartX.current = e.clientX
+    dragStartWidth.current = panelWidth
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    const onMove = (me) => {
+      if (!isDragging.current) return
+      const delta = dragStartX.current - me.clientX
+      const next = Math.min(580, Math.max(260, dragStartWidth.current + delta))
+      setPanelWidth(next)
+    }
+    const onUp = () => {
+      isDragging.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
   function handleBridgeToEcological() {
     const sorted     = [...cities].sort((a, b) => (b.basePop - b.pop) - (a.basePop - a.pop))
@@ -254,7 +281,18 @@ export default function CityFlowSimulator() {
           </div>
         </div>
 
-        <ControlPanel />
+        {/* Drag handle */}
+        <div
+          onMouseDown={handlePanelDragStart}
+          style={{
+            width: 6, flexShrink: 0, cursor: 'col-resize', borderRadius: 3,
+            background: 'transparent', transition: 'background 0.15s', position: 'relative', zIndex: 10,
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        />
+
+        <ControlPanel width={panelWidth} />
       </main>
 
       {/* ── Disaster resolution card ────────────────────────────────────── */}

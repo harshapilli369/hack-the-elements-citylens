@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import simulation
+from routers import simulation, realtime
 
 app = FastAPI(
     title="Chain Reaction API",
@@ -17,6 +17,7 @@ app.add_middleware(
 )
 
 app.include_router(simulation.router, prefix="/api")
+app.include_router(realtime.router, prefix="/api")
 
 
 @app.get("/api/health")
