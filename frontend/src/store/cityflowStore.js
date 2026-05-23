@@ -73,13 +73,16 @@ export const DISASTER_RECEIVER_MAP = {
 }
 
 // ─── City initial state — Atlantic Canada — LOW stress for visible disaster impact
+// x/y are % positions calibrated to match the Leaflet map at center=[47,-62], zoom=5
+// Geographic reference: SW=[43,-72] NE=[52.5,-50]  (lon-span=22°, lat-span=9.5°)
 const INITIAL_CITIES = [
   {
     // New Brunswick — forested inland province, wildfire/flood risk
+    // Real coords: 46.09°N, 64.77°W
     id: 'moncton',
     name: 'Moncton',
     subtitle: 'New Brunswick',
-    x: 18, y: 52,
+    x: 32, y: 56,
     basePop: 180000, pop: 180000,
     stress: 16, status: 'healthy', ecoScore: 100,
     resources:     { housing: 14, water: 18, waste: 15, air: 12, health: 16, energy: 12 },
@@ -89,10 +92,11 @@ const INITIAL_CITIES = [
   },
   {
     // Nova Scotia — regional hub, Hurricane Fiona 2022, coastal flood risk
+    // Real coords: 44.65°N, 63.58°W
     id: 'halifax',
     name: 'Halifax',
     subtitle: 'Nova Scotia',
-    x: 42, y: 74,
+    x: 38, y: 70,
     basePop: 460000, pop: 460000,
     stress: 28, status: 'healthy', ecoScore: 95,
     resources:     { housing: 28, water: 24, waste: 22, air: 18, health: 26, energy: 22 },
@@ -102,10 +106,11 @@ const INITIAL_CITIES = [
   },
   {
     // Prince Edward Island — smallest province, agricultural, storm surge risk
+    // Real coords: 46.24°N, 63.13°W  (north of NS, east of NB via Confederation Bridge)
     id: 'charlottetown',
     name: 'Charlottetown',
     subtitle: 'Prince Edward Island',
-    x: 56, y: 32,
+    x: 46, y: 50,
     basePop: 72000, pop: 72000,
     stress: 10, status: 'healthy', ecoScore: 100,
     resources:     { housing: 8, water: 12, waste: 9, air: 7, health: 10, energy: 8 },
@@ -115,10 +120,11 @@ const INITIAL_CITIES = [
   },
   {
     // Newfoundland — island province, isolated, severe storm/blizzard risk
+    // Real coords: 47.56°N, 52.71°W  (far east, across the Cabot Strait from NS)
     id: 'st-johns',
     name: "St. John's",
     subtitle: 'Newfoundland & Labrador',
-    x: 82, y: 45,
+    x: 78, y: 44,
     basePop: 215000, pop: 215000,
     stress: 14, status: 'healthy', ecoScore: 100,
     resources:     { housing: 12, water: 16, waste: 13, air: 10, health: 14, energy: 10 },
@@ -129,16 +135,16 @@ const INITIAL_CITIES = [
 ]
 
 const ROUTES = [
-  // NB ↔ NS — Trans-Canada Highway 104, primary land corridor
-  { id: 'mon-hal', from: 'moncton',       to: 'halifax',       cpX: 28, cpY: 68 },
-  // NB ↔ PEI — Confederation Bridge
-  { id: 'mon-clt', from: 'moncton',       to: 'charlottetown', cpX: 34, cpY: 38 },
-  // PEI ↔ NS — Northumberland Strait ferry
-  { id: 'clt-hal', from: 'charlottetown', to: 'halifax',       cpX: 52, cpY: 56 },
-  // NL ↔ NS — Marine Atlantic ferry / air corridor
-  { id: 'stj-hal', from: 'st-johns',      to: 'halifax',       cpX: 66, cpY: 62 },
-  // NL ↔ NB — indirect route via NS
-  { id: 'stj-mon', from: 'st-johns',      to: 'moncton',       cpX: 48, cpY: 30 },
+  // NB ↔ NS — Trans-Canada Highway 104 via Amherst, primary land corridor
+  { id: 'mon-hal', from: 'moncton',       to: 'halifax',       cpX: 33, cpY: 65 },
+  // NB ↔ PEI — Confederation Bridge (12.9 km fixed link)
+  { id: 'mon-clt', from: 'moncton',       to: 'charlottetown', cpX: 39, cpY: 49 },
+  // PEI ↔ NS — Northumberland Strait ferry (Wood Islands → Caribou)
+  { id: 'clt-hal', from: 'charlottetown', to: 'halifax',       cpX: 44, cpY: 62 },
+  // NL ↔ NS — Marine Atlantic ferry / air corridor (North Sydney → Port aux Basques)
+  { id: 'stj-hal', from: 'st-johns',      to: 'halifax',       cpX: 60, cpY: 62 },
+  // NL ↔ NB — indirect route (ferry to NS, then Trans-Canada west)
+  { id: 'stj-mon', from: 'st-johns',      to: 'moncton',       cpX: 55, cpY: 44 },
 ]
 
 const HISTORY_MAX          = 200
