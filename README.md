@@ -2,6 +2,15 @@
 
 > **A wildfire displaces 47,000 people in 3 days. The ecological damage at the receiving city takes 30 years to reverse. This platform makes both visible at once.**
 
+## For Judges
+
+| | File | What's inside |
+|---|---|---|
+| 🎬 | [demo.mp4](demo.mp4) | Full live walkthrough — wildfire ignition → chain reaction → ecological analysis dashboard |
+| 📊 | [EcoBridge.pptx](EcoBridge.pptx) | Slide deck — problem framing, data sources, architecture, and key findings |
+
+---
+
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
 [![Zustand](https://img.shields.io/badge/State-Zustand-FF6B6B?style=flat-square)](https://zustand-demo.pmnd.rs)
