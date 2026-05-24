@@ -1,13 +1,44 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useCityFlowStore } from '../../store/cityflowStore'
 
-const DISASTERS = [
-  { id: 'wildfire',  name: 'Wildfire',  icon: '🔥', color: '#FF9F0A', hits: ['Air Quality', 'Health', 'Waste'],     description: 'Destroys air quality, forces mass evacuation. Smoke causes cascading health collapse.' },
-  { id: 'flood',     name: 'Flood',     icon: '🌊', color: '#0A84FF', hits: ['Water', 'Housing', 'Waste'],           description: 'Contaminates water supply, destroys housing. Infrastructure submerged within hours.' },
-  { id: 'conflict',  name: 'Conflict',  icon: '⚔️', color: '#FF375F', hits: ['Housing', 'Health', 'Energy'],        description: 'Immediate collapse across all systems. Mass displacement begins instantly.' },
-  { id: 'heatwave',  name: 'Heatwave',  icon: '☀️', color: '#FFD60A', hits: ['Health', 'Energy', 'Water'],          description: 'Spikes energy demand, causes health emergencies. Water evaporation accelerates.' },
-  { id: 'drought',   name: 'Drought',   icon: '🏜️', color: '#FF9F0A', hits: ['Water', 'Health', 'Waste'],           description: 'Slow water depletion — long-term food and health crisis without dramatic onset.' },
+/* ── Categorized triggers ─────────────────────────────────────────────────── */
+const TRIGGER_CATEGORIES = [
+  {
+    id: 'water',
+    label: 'Water-Based Triggers',
+    icon: '💧',
+    color: '#0A84FF',
+    triggers: [
+      { id: 'flood',               name: 'Flood',               icon: '🌊', color: '#0A84FF', hits: ['Water', 'Housing', 'Waste'],   description: 'Contaminates water supply, destroys housing. Infrastructure submerged within hours.' },
+      { id: 'water_scarcity',      name: 'Water Scarcity',      icon: '🏜️', color: '#64D2FF', hits: ['Water', 'Health', 'Energy'],   description: 'Chronic depletion of freshwater reserves. Agriculture collapses, rationing begins.' },
+      { id: 'water_contamination', name: 'Water Contamination', icon: '☠️', color: '#5E5CE6', hits: ['Water', 'Health', 'Waste'],    description: 'Toxic runoff or chemical spill poisons the water table. Mass illness follows.' },
+    ],
+  },
+  {
+    id: 'air',
+    label: 'Air-Based Triggers',
+    icon: '🌬️',
+    color: '#FF9F0A',
+    triggers: [
+      { id: 'wildfire',              name: 'Wildfire',              icon: '🔥', color: '#FF9F0A', hits: ['Air Quality', 'Health', 'Waste'],   description: 'Destroys air quality, forces mass evacuation. Smoke causes cascading health collapse.' },
+      { id: 'heatwave',             name: 'Heatwave',             icon: '☀️', color: '#FFD60A', hits: ['Health', 'Energy', 'Water'],        description: 'Spikes energy demand, causes health emergencies. Water evaporation accelerates.' },
+      { id: 'air_pollution_crisis', name: 'Air Pollution Crisis', icon: '🏭', color: '#AC8E68', hits: ['Air Quality', 'Health', 'Energy'],  description: 'Industrial emissions or inversion layer traps smog. Respiratory emergencies surge.' },
+    ],
+  },
+  {
+    id: 'land',
+    label: 'Land-Based Triggers',
+    icon: '🌍',
+    color: '#30D158',
+    triggers: [
+      { id: 'earthquake',        name: 'Earthquake',        icon: '🌋', color: '#FF375F', hits: ['Housing', 'Health', 'Energy'],   description: 'Seismic shock collapses buildings and ruptures utilities. Instant mass displacement.' },
+      { id: 'landslide',         name: 'Landslides',        icon: '⛰️', color: '#A1845E', hits: ['Housing', 'Waste', 'Health'],    description: 'Rain-saturated slopes collapse onto roads and settlements. Communities are cut off.' },
+      { id: 'soil_degradation',  name: 'Soil Degradation',  icon: '🌾', color: '#8E8E93', hits: ['Health', 'Water', 'Waste'],      description: 'Long-term erosion and nutrient loss. Food systems fail, famine pressure builds.' },
+    ],
+  },
 ]
+
+const DISASTERS = TRIGGER_CATEGORIES.flatMap(cat => cat.triggers)
 
 const SEVERITY_LABELS = {
   1: { label: 'Minor',        sublabel: 'Localised incident, low displacement' },
@@ -49,9 +80,17 @@ export function DisasterTriggers() {
   const [affectedPct, setAffectedPct] = useState(75)
   const [duration,    setDuration]    = useState(1000)
 
+  const [hoveredId, setHoveredId]     = useState(null)
+  const [openCats, setOpenCats]       = useState({ water: true, air: false, land: false })
+
   const selectedCity = cities.find(c => c.id === selectedCityId)
-  const hasActive    = selectedCity?.isDisasterActive
+  // Block all triggers while ANY city has an active disaster — one event at a time
+  const anyActive    = cities.some(c => c.isDisasterActive)
+  const activeCity   = cities.find(c => c.isDisasterActive)
   const disaster     = DISASTERS.find(d => d.id === pendingType)
+
+  const toggleCat = (catId) =>
+    setOpenCats(prev => ({ ...prev, [catId]: !prev[catId] }))
 
   function selectType(id) {
     if (pendingType === id) { setPendingType(null); return }
@@ -74,7 +113,19 @@ export function DisasterTriggers() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
-      {/* Target city */}
+      {/* ── Section heading ─────────────────────────────────────────────── */}
+      <div style={{
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        color: 'rgba(245,245,247,0.35)',
+        padding: '4px 2px 2px',
+      }}>
+        Triggers
+      </div>
+
+      {/* ── Target city ─────────────────────────────────────────────────── */}
       <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
         <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(245,245,247,0.28)', marginBottom: 8 }}>Target City</div>
         {selectedCity ? (
@@ -85,7 +136,7 @@ export function DisasterTriggers() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: stressColor(selectedCity.stress), fontWeight: 600 }}>{Math.round(selectedCity.stress)}%</span>
-              {hasActive && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: '#FF375F', background: 'rgba(255,55,95,0.10)', border: '1px solid rgba(255,55,95,0.25)', padding: '2px 7px', borderRadius: 5, animation: 'dangerPulse 1.5s infinite' }}>ACTIVE</span>}
+              {selectedCity?.isDisasterActive && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: '#FF375F', background: 'rgba(255,55,95,0.10)', border: '1px solid rgba(255,55,95,0.25)', padding: '2px 7px', borderRadius: 5, animation: 'dangerPulse 1.5s infinite' }}>ACTIVE</span>}
             </div>
           </div>
         ) : (
@@ -96,49 +147,138 @@ export function DisasterTriggers() {
         )}
       </div>
 
-      {/* Disaster type list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {DISASTERS.map(d => {
-          const selected = pendingType === d.id
-          const disabled = !selectedCityId || hasActive
+      {/* ── Categorized trigger list ────────────────────────────────────── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {TRIGGER_CATEGORIES.map(cat => {
+          const isOpen = !!openCats[cat.id]
           return (
-            <button
-              key={d.id}
-              disabled={disabled}
-              onClick={() => { if (!disabled) selectType(d.id) }}
-              style={{
-                width: '100%',
-                padding: '11px 14px',
-                borderRadius: 12,
-                border: `1px solid ${selected ? `${d.color}60` : 'rgba(255,255,255,0.07)'}`,
-                background: selected ? `${d.color}12` : 'rgba(255,255,255,0.02)',
-                opacity: disabled ? 0.35 : 1,
-                cursor: disabled ? 'not-allowed' : 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.16s ease',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, filter: selected ? `drop-shadow(0 0 6px ${d.color})` : 'none', transition: 'filter 0.16s' }}>{d.icon}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: selected ? d.color : '#F5F5F7', letterSpacing: '-0.2px', transition: 'color 0.16s' }}>{d.name}</span>
-                    <span style={{ fontSize: 12, color: selected ? d.color : 'rgba(245,245,247,0.20)', transition: 'all 0.16s' }}>{selected ? '▲' : '→'}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    {d.hits.map(h => (
-                      <span key={h} style={{ fontSize: 10, fontWeight: 500, color: d.color, background: `${d.color}10`, border: `1px solid ${d.color}20`, padding: '1px 6px', borderRadius: 5 }}>{h}</span>
-                    ))}
-                  </div>
+            <div key={cat.id} style={{
+              borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.07)',
+              background: 'rgba(255,255,255,0.02)',
+              overflow: 'hidden',
+              transition: 'border-color 0.2s',
+            }}>
+              {/* Category header — clickable toggle */}
+              <button
+                onClick={() => toggleCat(cat.id)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>{cat.icon}</span>
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: cat.color,
+                    letterSpacing: '-0.1px',
+                  }}>
+                    {cat.label}
+                  </span>
+                </div>
+                {/* Dropdown chevron */}
+                <span style={{
+                  fontSize: 10,
+                  color: 'rgba(245,245,247,0.30)',
+                  transition: 'transform 0.25s ease',
+                  transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  display: 'inline-block',
+                }}>
+                  ▼
+                </span>
+              </button>
+
+              {/* Collapsible trigger items */}
+              <div style={{
+                maxHeight: isOpen ? 600 : 0,
+                opacity: isOpen ? 1 : 0,
+                overflow: 'hidden',
+                transition: 'max-height 0.3s ease, opacity 0.25s ease',
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '0 6px 8px' }}>
+                  {cat.triggers.map(d => {
+                    const selected = pendingType === d.id
+                    const hovered  = hoveredId === d.id
+                    const disabled = !selectedCityId || anyActive
+                    return (
+                      <button
+                        key={d.id}
+                        disabled={disabled}
+                        onClick={() => { if (!disabled) selectType(d.id) }}
+                        onMouseEnter={() => setHoveredId(d.id)}
+                        onMouseLeave={() => setHoveredId(null)}
+                        style={{
+                          width: '100%',
+                          padding: '9px 12px',
+                          borderRadius: 10,
+                          border: `1px solid ${selected ? `${d.color}60` : (hovered && !disabled ? `${d.color}35` : 'rgba(255,255,255,0.05)')}`,
+                          background: selected ? `${d.color}12` : (hovered && !disabled ? `${d.color}08` : 'rgba(255,255,255,0.01)'),
+                          opacity: disabled ? 0.35 : 1,
+                          cursor: disabled ? 'not-allowed' : 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.16s ease',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                          {/* Icon */}
+                          <span style={{
+                            fontSize: 16,
+                            lineHeight: 1,
+                            flexShrink: 0,
+                            marginTop: 1,
+                            filter: selected || (hovered && !disabled) ? `drop-shadow(0 0 6px ${d.color})` : 'none',
+                            transition: 'filter 0.16s',
+                          }}>{d.icon}</span>
+
+                          {/* Content */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: (selected || (hovered && !disabled)) ? 5 : 3 }}>
+                              <span style={{
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: selected || (hovered && !disabled) ? d.color : '#F5F5F7',
+                                letterSpacing: '-0.2px',
+                                transition: 'color 0.16s',
+                              }}>{d.name}</span>
+                              <span style={{
+                                fontSize: 12,
+                                color: selected || (hovered && !disabled) ? d.color : 'rgba(245,245,247,0.20)',
+                                transition: 'all 0.16s',
+                                transform: selected || (hovered && !disabled) ? 'translateX(2px)' : 'none',
+                              }}>{selected ? '▲' : '→'}</span>
+                            </div>
+                            {(selected || (hovered && !disabled)) ? (
+                              <p style={{ fontSize: 10, color: 'rgba(245,245,247,0.40)', lineHeight: 1.5, margin: 0 }}>{d.description}</p>
+                            ) : (
+                              <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                                {d.hits.map(h => (
+                                  <span key={h} style={{ fontSize: 9, fontWeight: 500, color: d.color, background: `${d.color}10`, border: `1px solid ${d.color}20`, padding: '1px 5px', borderRadius: 4 }}>{h}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
-            </button>
+            </div>
           )
         })}
       </div>
 
-      {/* Config panel — shown when a disaster type is selected */}
-      {pendingType && disaster && selectedCity && (
+      {/* Config panel — shown when a disaster type is selected and no event is running */}
+      {pendingType && disaster && selectedCity && !anyActive && (
         <div style={{ padding: '14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${disaster.color}25`, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* Severity */}
@@ -233,9 +373,9 @@ export function DisasterTriggers() {
         </div>
       )}
 
-      {hasActive && (
+      {anyActive && (
         <p style={{ fontSize: 11, color: 'rgba(245,245,247,0.25)', textAlign: 'center', fontFamily: 'JetBrains Mono, monospace', paddingTop: 4 }}>
-          Waiting for disaster to subside…
+          {activeCity ? `${activeCity.name} event in progress — wait for it to subside` : 'Event in progress — wait for it to subside'}
         </p>
       )}
     </div>

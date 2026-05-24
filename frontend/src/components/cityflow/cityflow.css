@@ -48,21 +48,23 @@
 }
 
 .cityflow-node-core {
-  width: 10px; height: 10px;
+  width: 12px; height: 12px;
   border-radius: 50%;
   background-color: currentColor;
-  box-shadow: 0 0 12px currentColor, 0 0 24px rgba(currentColor, 0.3);
+  box-shadow: 0 0 14px currentColor, 0 0 28px currentColor;
   position: relative;
   z-index: 2;
+  transition: width 0.4s ease, height 0.4s ease, box-shadow 0.4s ease;
 }
 
 .cityflow-node-bg {
   position: absolute;
-  width: 28px; height: 28px;
+  width: 32px; height: 32px;
   border-radius: 50%;
   background-color: currentColor;
   opacity: 0.15;
   z-index: 1;
+  transition: width 0.4s ease, height 0.4s ease, opacity 0.4s ease;
 }
 
 .cityflow-node.healthy  { color: #30D158; }
@@ -70,15 +72,53 @@
 .cityflow-node.stressed { color: #FF9F0A; }
 .cityflow-node.critical { color: #FF375F; }
 
+/* Node grows and glows brighter under stress */
+.cityflow-node.warning .cityflow-node-core {
+  width: 14px; height: 14px;
+  box-shadow: 0 0 18px #FFD60A, 0 0 40px #FFD60A88;
+}
+.cityflow-node.warning .cityflow-node-bg  { width: 38px; height: 38px; opacity: 0.22; }
+
+.cityflow-node.stressed .cityflow-node-core {
+  width: 16px; height: 16px;
+  box-shadow: 0 0 22px #FF9F0A, 0 0 50px #FF9F0AAA;
+}
+.cityflow-node.stressed .cityflow-node-bg { width: 44px; height: 44px; opacity: 0.28; }
+
+.cityflow-node.critical .cityflow-node-core {
+  width: 18px; height: 18px;
+  box-shadow: 0 0 28px #FF375F, 0 0 60px #FF375FBB;
+}
+.cityflow-node.critical .cityflow-node-bg { width: 52px; height: 52px; opacity: 0.35; }
+
 .cityflow-node.critical::before {
   border-width: 2px;
   opacity: 0.5;
   animation: pulse-ring-critical 0.9s cubic-bezier(0.215,0.61,0.355,1) infinite;
 }
 
+/* ── Disaster SOURCE city: element-color node (blue=flood, orange=wildfire, …) ── */
+/* The inline `color` prop on the node div overrides the status class color.       */
+/* These rules size the core + bg to match critical scale and use currentColor.     */
+.cityflow-node.disaster-active .cityflow-node-core {
+  width: 18px; height: 18px;
+  box-shadow: 0 0 28px currentColor, 0 0 60px currentColor;
+}
+.cityflow-node.disaster-active .cityflow-node-bg {
+  width: 52px; height: 52px;
+  opacity: 0.50;
+  animation: flicker 0.22s infinite alternate;
+}
+.cityflow-node.disaster-active::before {
+  border-width: 2px;
+  opacity: 0.55;
+  animation: pulse-ring-critical 0.85s cubic-bezier(0.215,0.61,0.355,1) infinite;
+}
+
+/* The .active-disaster class is still applied alongside .disaster-active */
 .cityflow-node.active-disaster .cityflow-node-bg {
   animation: flicker 0.18s infinite alternate;
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
 /* ── City label card ────────────────────────────────────────────────────── */

@@ -234,12 +234,20 @@ export class MigrantRenderer {
     const routeMap = {}
     routes.forEach(r => { routeMap[r.id] = r })
 
+    const anyDisasterActive = cities.some(c => c.isDisasterActive)
+
     migrants.forEach(m => {
       const route    = routeMap[m.routeId]
       if (!route) return
       const fromNode = cityMap[m.from]
       const toNode   = cityMap[m.to]
       if (!fromNode || !toNode) return
+
+      // Fade out economic/return migrants during active disasters — they look wrong
+      if (anyDisasterActive && (m.type === 'economic' || m.type === 'return')) {
+        ctx.save()
+        ctx.globalAlpha = 0.08
+      }
 
       const cpX = (route.cpX / 100) * width
       const cpY = (route.cpY / 100) * height
@@ -255,39 +263,44 @@ export class MigrantRenderer {
       const isCascade  = m.type === 'cascade'
       const isReturn   = m.type === 'return'
 
-      let figureColor, scale, numFigures, walkSpeed
+      let figureColor, scale, numFigures, walkSpeed, colWidth, rowGap
 
       if (isReturn) {
-        figureColor = 'rgba(200,220,255,0.85)'
-        scale       = 0.9
-        numFigures  = Math.min(6, Math.max(3, Math.floor(m.count / 80)))
-        walkSpeed   = 0.10
+        // Returning residents — soft blue-white, calm pace, single file
+        figureColor = 'rgba(180,210,255,0.75)'
+        scale       = 0.85
+        numFigures  = Math.min(8, Math.max(3, Math.floor(m.count / 55)))
+        walkSpeed   = 0.08
+        colWidth    = 1
+        rowGap      = 12
       } else if (isEconomic) {
-        figureColor = 'rgba(46,213,115,0.90)'
-        scale       = 0.9
-        numFigures  = Math.min(6, Math.max(3, Math.floor(m.count / 80)))
-        walkSpeed   = 0.10
+        // Economic migrants — green, calm pace, 2-abreast
+        figureColor = 'rgba(46,213,115,0.88)'
+        scale       = 0.88
+        numFigures  = Math.min(8, Math.max(3, Math.floor(m.count / 55)))
+        walkSpeed   = 0.09
+        colWidth    = 2
+        rowGap      = 12
       } else if (isCascade) {
-        figureColor = 'rgba(255,100,80,0.95)'
+        // Cascade panic — vivid red, fast, 2-abreast fleeing column
+        figureColor = 'rgba(255,70,50,1.0)'
         scale       = 1.0
-        numFigures  = Math.min(10, Math.max(4, Math.floor(m.count / 150)))
-        walkSpeed   = 0.22
+        numFigures  = Math.min(20, Math.max(10, Math.floor(m.count / 38)))
+        walkSpeed   = 0.32
+        colWidth    = 2
+        rowGap      = 13
       } else {
-        // Disaster refugees — wildfire=orange, flood=blue, conflict=red, heatwave=yellow, drought=brown
-        const originCity = cities.find(ci => ci.id === m.from)
-        const disType    = m.disasterType
-          || (originCity?.isDisasterActive ? originCity.disasterType : null)
-        const col        = disType ? DISASTER_COLORS[disType] : null
-        figureColor = col
-          ? `rgba(${col.r},${col.g},${col.b},0.95)`
-          : 'rgba(255,255,255,0.95)'
-        scale      = 1.0
-        numFigures = Math.min(10, Math.max(4, Math.floor(m.count / 150)))
-        walkSpeed  = 0.18
+        // Disaster refugees — strict one color per disaster type, 2-abreast column
+        const col = DISASTER_COLORS[m.disasterType] || { r: 255, g: 255, b: 255 }
+        figureColor = `rgba(${col.r},${col.g},${col.b},1.0)`
+        scale       = 1.0
+        numFigures  = Math.min(20, Math.max(10, Math.floor(m.count / 38)))
+        walkSpeed   = 0.22
+        colWidth    = 2
+        rowGap      = 14
       }
 
-      // Compute route tangent at this position — figures march in a 2-wide column
-      // along the route direction rather than scattering in a random circle
+      // Compute route tangent — figures march along the route direction
       const tA  = Math.max(0, progress - 0.02)
       const tB  = Math.min(1, progress + 0.02)
       const ptA = this.getBezierXY(tA, sx, sy, cpX, cpY, cpX, cpY, ex, ey)
@@ -300,14 +313,20 @@ export class MigrantRenderer {
       const px  = -tdy / tlen   // perpendicular unit vector
       const py  =  tdx / tlen
 
+      // March in a column: colWidth abreast, rows staggered back along the route
+      const sideStep = colWidth === 1 ? 0 : 5
       for (let i = 0; i < numFigures; i++) {
-        // 2-wide column: even indices left, odd right; rows stagger back along route
-        const side     = (i % 2 === 0 ? -1 : 1)
-        const row      = Math.floor(i / 2)
-        const ox       = px * side * 5 - ax * row * 10
-        const oy       = py * side * 5 - ay * row * 10
-        const walkCycle = (this.frameCount * walkSpeed) + (i * 1.5)
+        const col2      = i % colWidth
+        const row       = Math.floor(i / colWidth)
+        const side      = colWidth === 1 ? 0 : col2 - (colWidth - 1) / 2
+        const ox        = px * side * sideStep - ax * row * rowGap
+        const oy        = py * side * sideStep - ay * row * rowGap
+        const walkCycle = (this.frameCount * walkSpeed) + (i * 1.1)
         this.drawPerson(pos.x + ox, pos.y + oy, scale, walkCycle, figureColor)
+      }
+
+      if (anyDisasterActive && (m.type === 'economic' || m.type === 'return')) {
+        ctx.restore()
       }
     })
   }

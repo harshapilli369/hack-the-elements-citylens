@@ -8,7 +8,6 @@ import { ControlPanel } from '../components/cityflow/ControlPanel'
 import { OnboardingOverlay } from '../components/cityflow/OnboardingOverlay'
 import { EcoBridge } from '../components/cityflow/EcoBridge'
 import { CITY_PROVINCE_MAP, DISASTER_RECEIVER_MAP, POLICY_EFFECTS } from '../store/cityflowStore'
-import { useWeatherAutoTrigger } from '../hooks/useWeatherAutoTrigger'
 import '../components/cityflow/cityflow.css'
 
 function useSituationReport(cities, migrants, activeDisasters, cascadeCount, migrationWeights, totalDisplaced) {
@@ -78,8 +77,10 @@ export default function CityFlowSimulator() {
   const [disasterSummary, setDisasterSummary] = useState(null)
   const [cascadeBanner,   setCascadeBanner]   = useState(null)
   const [policyBanner,    setPolicyBanner]    = useState(null)
-  const [autoBanner,      setAutoBanner]      = useState(null)
-  const [showOnboarding,  setShowOnboarding]  = useState(false)
+  const [autoBanner,          setAutoBanner]          = useState(null)
+  const [showOnboarding,      setShowOnboarding]      = useState(false)
+  const [cityBCriticalAlert,  setCityBCriticalAlert]  = useState(null)
+  const cityBCriticalShownRef = useRef(false)
 
   const prevEventCount      = useRef(0)
   const summaryTimer        = useRef(null)
@@ -88,8 +89,6 @@ export default function CityFlowSimulator() {
   const lastCascadeId       = useRef(null)
   const autoPlayTimers      = useRef([])
   const bridgeRef           = useRef(null)  // always points to latest handleBridgeToEcological
-
-  useWeatherAutoTrigger()
 
   const situation = useSituationReport(cities, migrants, activeDisasters, cascadeCount, migrationWeights, totalDisplaced)
   const avgEco    = Math.round(cities.reduce((s, c) => s + (c.ecoScore ?? 100), 0) / cities.length)
@@ -100,12 +99,8 @@ export default function CityFlowSimulator() {
   const simTimeStr = `Day ${simDay} · ${String(simHour).padStart(2, '0')}:00`
 
   useEffect(() => {
-    const isDemo  = searchParams.get('demo')   === 'true'
     const focus   = searchParams.get('focus')
     const policy  = searchParams.get('policy')
-
-    if (isDemo) { setSearchParams({}); runAutoPlay() }
-    else setShowOnboarding(true)
 
     if (focus)  selectCity(focus)
     if (focus && policy) {
@@ -172,6 +167,29 @@ export default function CityFlowSimulator() {
     summaryTimer.current = setTimeout(() => setDisasterSummary(null), 12000)
   }, [events, cities])
 
+  // Show critical alert when City B (Halifax) first hits critical status during a disaster
+  useEffect(() => {
+    const cityB = cities.find(c => c.id === 'halifax')
+    if (!cityB || cityBCriticalShownRef.current) return
+    if (cityB.status === 'critical' && (activeDisasters > 0 || totalDisplaced > 100)) {
+      cityBCriticalShownRef.current = true
+      setCityBCriticalAlert({
+        stress:   Math.round(cityB.stress),
+        pop:      cityB.pop,
+        basePop:  cityB.basePop,
+        ecoScore: Math.round(cityB.ecoScore ?? 100),
+      })
+    }
+  }, [cities, activeDisasters, totalDisplaced])
+
+  // Reset alert flag on simulation reset
+  useEffect(() => {
+    if (tickCount === 0) {
+      cityBCriticalShownRef.current = false
+      setCityBCriticalAlert(null)
+    }
+  }, [tickCount])
+
   function handlePanelDragStart(e) {
     isDragging.current = true
     dragStartX.current = e.clientX
@@ -211,15 +229,31 @@ export default function CityFlowSimulator() {
 
     if (validEntries.length === 0) {
       // Fallback: disaster still active, no resolved events yet — single-event to /simulate
-      const sorted     = [...freshCities].sort((a, b) => (b.basePop - b.pop) - (a.basePop - a.pop))
-      const sourceCity = sorted[0]
-      const destCity   = sorted.find(c => c.pop > c.basePop) || freshCities.find(c => c.id !== sourceCity.id)
-      const displaced  = Math.max(50000, Math.min(800000, Math.round(Math.abs(sourceCity.basePop - sourceCity.pop))))
-      const sourceProvince = CITY_PROVINCE_MAP[sourceCity?.id]?.province || 'New Brunswick'
-      const destProvince   = CITY_PROVINCE_MAP[destCity?.id]?.province   || 'Nova Scotia'
+      let sourceProvince = 'New Brunswick'
+      let destProvince = 'Nova Scotia'
+      let displaced = 200000
+      let reason = 'climate_displacement'
+
+      if (disasterSummary) {
+        sourceProvince = CITY_PROVINCE_MAP[disasterSummary.cityId]?.province || 'New Brunswick'
+        const receiverId = DISASTER_RECEIVER_MAP[disasterSummary.cityId]
+        destProvince = CITY_PROVINCE_MAP[receiverId]?.province || 'Nova Scotia'
+        displaced = Math.max(5000, Math.min(1000000, disasterSummary.displaced || 200000))
+      } else {
+        const sorted     = [...freshCities].sort((a, b) => (b.basePop - b.pop) - (a.basePop - a.pop))
+        const sourceCity = sorted[0]
+        const destCity   = sorted.find(c => c.pop > c.basePop) || freshCities.find(c => c.id !== sourceCity.id)
+        sourceProvince = CITY_PROVINCE_MAP[sourceCity?.id]?.province || 'New Brunswick'
+        destProvince   = CITY_PROVINCE_MAP[destCity?.id]?.province   || 'Nova Scotia'
+        displaced  = Math.max(50000, Math.min(800000, Math.round(Math.abs(sourceCity.basePop - sourceCity.pop))))
+      }
+
       const params = new URLSearchParams({
-        source: sourceProvince, dest: destProvince,
-        pop: String(displaced || 200000), reason: 'climate_displacement', autorun: '1',
+        source:  sourceProvince,
+        dest:    destProvince,
+        pop:     String(displaced),
+        reason:  reason,
+        autorun: '1',
       })
       navigate(`/simulate?${params.toString()}`)
       return
@@ -474,6 +508,87 @@ export default function CityFlowSimulator() {
           </div>
         </div>
       )}
+
+      {/* ── City B Critical Alert — fires when Halifax hits red from flood refugees ── */}
+      {cityBCriticalAlert && !showOnboarding && (
+        <div
+          style={{ position: 'absolute', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(7,8,15,0.72)', backdropFilter: 'blur(10px)', animation: 'slideDown 0.35s ease' }}
+          onClick={() => setCityBCriticalAlert(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: 480, borderRadius: 20, overflow: 'hidden', background: 'rgba(7,8,15,0.98)', border: '1px solid rgba(255,55,95,0.40)', boxShadow: '0 0 60px rgba(255,55,95,0.18), 0 32px 80px rgba(0,0,0,0.80)', backdropFilter: 'blur(24px)' }}
+          >
+            {/* Gradient top bar */}
+            <div style={{ height: 3, background: 'linear-gradient(90deg,#FF375F 0%,#FF9F0A 55%,#FFD60A 100%)' }} />
+
+            <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* Header row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 46, height: 46, borderRadius: 12, background: 'rgba(255,55,95,0.12)', border: '1px solid rgba(255,55,95,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🌊</div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#FF375F', marginBottom: 4, animation: 'dangerPulse 0.9s infinite' }}>● CRITICAL THRESHOLD REACHED</div>
+                    <div style={{ fontSize: 19, fontWeight: 700, color: '#F5F5F7', letterSpacing: '-0.4px', lineHeight: 1.1 }}>City B at Breaking Point</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setCityBCriticalAlert(null)}
+                  style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', color: 'rgba(245,245,247,0.40)', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                >✕</button>
+              </div>
+
+              {/* Description */}
+              <div style={{ padding: '13px 15px', borderRadius: 12, background: 'rgba(255,55,95,0.06)', border: '1px solid rgba(255,55,95,0.15)' }}>
+                <div style={{ fontSize: 12.5, color: 'rgba(245,245,247,0.68)', lineHeight: 1.7 }}>
+                  Flood refugees from <span style={{ color: '#38BDF8', fontWeight: 600 }}>City A</span> have overwhelmed <span style={{ color: '#FF375F', fontWeight: 600 }}>City B</span>. Stress has crossed <span style={{ color: '#FF375F', fontWeight: 700 }}>{cityBCriticalAlert.stress}%</span> — housing capacity, clean water, and healthcare systems are failing under the population surge.
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                {[
+                  { label: 'Stress',       value: `${cityBCriticalAlert.stress}%`,       color: '#FF375F' },
+                  { label: 'Pop Surge',    value: `+${fmtK(Math.max(0, cityBCriticalAlert.pop - cityBCriticalAlert.basePop))}`, color: '#FF9F0A' },
+                  { label: 'Eco Health',   value: `${cityBCriticalAlert.ecoScore}`,        color: cityBCriticalAlert.ecoScore > 70 ? '#30D158' : '#FFD60A' },
+                ].map(m => (
+                  <div key={m.label} style={{ padding: '11px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
+                    <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(245,245,247,0.28)', marginBottom: 5 }}>{m.label}</div>
+                    <div style={{ fontSize: 17, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: m.color }}>{m.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Ecological asymmetry callout */}
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', borderRadius: 12, background: 'rgba(255,159,10,0.06)', border: '1px solid rgba(255,159,10,0.18)' }}>
+                <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>🌿</span>
+                <div style={{ fontSize: 11.5, color: 'rgba(245,245,247,0.52)', lineHeight: 1.65 }}>
+                  Every refugee carries a <span style={{ color: '#FF9F0A', fontWeight: 600 }}>land, water, and carbon footprint</span>. Displacement happened in hours — ecological recovery takes <span style={{ color: 'rgba(245,245,247,0.75)', fontWeight: 600 }}>decades</span>. That asymmetry is the chain reaction.
+                </div>
+              </div>
+
+              {/* CTAs */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => { setCityBCriticalAlert(null); handleBridgeToEcological() }}
+                  style={{ flex: 1, padding: '13px 0', borderRadius: 12, border: 'none', cursor: 'pointer', background: '#30D158', color: '#07080F', fontSize: 13, fontWeight: 700, letterSpacing: '-0.2px', boxShadow: '0 0 28px rgba(48,209,88,0.30)' }}
+                >
+                  🔬 Analyse ecological chain reaction →
+                </button>
+                <button
+                  onClick={() => setCityBCriticalAlert(null)}
+                  style={{ padding: '13px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.10)', cursor: 'pointer', background: 'transparent', color: 'rgba(245,245,247,0.45)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}
+                >
+                  Later
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

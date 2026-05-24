@@ -52,6 +52,49 @@ const PRESETS = {
     label:                'NS → NB · Coastal Storm Surge',
     description:          'NS coastal displacement: 3.2× increase in major Atlantic storms since 2000 (ECCC 2023). Models 8% displacement of ~42k at-risk coastal residents',
   },
+  // ─── Cross-Canada scenarios (Landing page) ──────────────────────────────────
+  nb_alberta: {
+    source_province:      'New Brunswick',
+    destination_province: 'Alberta',
+    population_size:      120000,
+    migration_reason:     'resource_industry',
+    duration_months:      24,
+    label:                'NB → AB · Oil & Gas',
+    description:          'Atlantic Canadians migrating west for oil & gas jobs — massive carbon footprint shift',
+  },
+  alberta_quebec: {
+    source_province:      'Alberta',
+    destination_province: 'Quebec',
+    population_size:      95000,
+    migration_reason:     'climate_displacement',
+    duration_months:      24,
+    label:                'AB → QC · Climate',
+    description:          'Wildfire & drought forcing Albertans eastward — rare carbon-reducing migration',
+  },
+  quebec_ontario: {
+    source_province:      'Quebec',
+    destination_province: 'Ontario',
+    population_size:      179000,
+    migration_reason:     'economic_opportunity',
+    duration_months:      24,
+    label:                'QC → ON · Economic',
+    description:          'Quebec → Ontario economic migration for Toronto job market — moderate carbon increase',
+  },
+}
+
+// ─── Disaster type → migration reason mapping (used by CityFlow bridge) ──────
+export const DISASTER_TO_REASON = {
+  wildfire:              'climate_displacement',
+  flood:                 'climate_displacement',
+  conflict:              'climate_displacement',
+  heatwave:              'climate_displacement',
+  drought:               'climate_displacement',
+  water_scarcity:        'climate_displacement',
+  water_contamination:   'climate_displacement',
+  air_pollution_crisis:  'climate_displacement',
+  earthquake:            'climate_displacement',
+  landslide:             'climate_displacement',
+  soil_degradation:      'climate_displacement',
 }
 
 export const useSimulationStore = create((set, get) => ({

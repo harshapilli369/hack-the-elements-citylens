@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useSimulationStore, PRESETS_LIST, ATLANTIC_PROVINCES } from '../../store/simulationStore'
 import { fetchProvinces, fetchMigrationReasons, runSimulation } from '../../utils/api'
 import { formatPopulation } from '../../utils/formatters'
@@ -11,10 +11,10 @@ const R = '#FF375F'
 
 export function SimulationForm() {
   const store = useSimulationStore()
+  const navigate = useNavigate()
   const [runError, setRunError] = useState(null)
   const [showAllProvinces, setShowAllProvinces] = useState(false)
-  const autoRunFired = useRef(false)
-  const bridgeFired  = useRef(false)
+  const bridgeFired = useRef(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   const { data: provinces = [] } = useQuery({ queryKey: ['provinces'], queryFn: fetchProvinces })
@@ -42,9 +42,9 @@ export function SimulationForm() {
     }
   }
 
+  // ── Preset or Custom Auto-run effect ───────────────────────────────────────
   useEffect(() => {
-    if (store.pendingAutoRun && provinces.length > 0 && !autoRunFired.current) {
-      autoRunFired.current = true
+    if (store.pendingAutoRun && provinces.length > 0) {
       store.clearPendingAutoRun()
       handleRun()
     }
@@ -76,7 +76,6 @@ export function SimulationForm() {
       migration_reason:     reason || 'climate_displacement',
       duration_months:      24,
     })
-    // loadCustom sets pendingAutoRun which triggers handleRun via the effect above
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provinces.length])
 
@@ -87,107 +86,235 @@ export function SimulationForm() {
   const atlanticProvinces = provinces.filter(p => ATLANTIC_PROVINCES.includes(p.name))
   const visibleProvinces  = showAllProvinces ? provinces : atlanticProvinces
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+  // Filter preset list depending on Atlantic only vs All Provinces toggle
+  const filteredPresets = PRESETS_LIST.filter(p => 
+    showAllProvinces || (ATLANTIC_PROVINCES.includes(p.source_province) && ATLANTIC_PROVINCES.includes(p.destination_province))
+  )
 
-      {/* Header */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#F5F5F7', letterSpacing: '-0.3px' }}>Migration Scenario</div>
-          <div style={{ padding: '2px 7px', borderRadius: 5, background: 'rgba(10,132,255,0.12)', border: '1px solid rgba(10,132,255,0.25)', fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#0A84FF' }}>Atlantic Canada</div>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Header section matching user sketch */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.07)', paddingBottom: 16 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <span style={{ fontSize: 16 }}>🌿</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#F5F5F7', letterSpacing: '-0.3px' }}>Chain Reaction</span>
+          </div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(245,245,247,0.30)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ecological Model</div>
         </div>
-        <div style={{ fontSize: 11, color: 'rgba(245,245,247,0.35)' }}>Province-to-province ecological chain reaction</div>
+
+        {/* Current Flow Tag */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '6px 12px', borderRadius: 8,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.06)'
+        }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#30D158', animation: 'dangerPulse 2s infinite' }} />
+          <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: 'rgba(245,245,247,0.65)', fontWeight: 600 }}>
+            {store.source_province} → {store.destination_province}
+          </span>
+        </div>
+
+        {/* Back to CityFlow Navigation Button */}
+        <button
+          onClick={() => navigate('/cityflow')}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            width: '100%', padding: '8px 12px', borderRadius: 8,
+            fontSize: 12, fontWeight: 600,
+            color: 'rgba(245,245,247,0.70)',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            marginTop: 4
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.color = '#F5F5F7';
+            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.color = 'rgba(245,245,247,0.70)';
+            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+          }}
+        >
+          🏙️ CityFlow Simulator
+        </button>
       </div>
 
-      {/* Presets */}
+      {/* Migration Scenario Subtitle */}
       <div>
-        <Label>Presets</Label>
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
-          {PRESETS_LIST.map(p => {
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(245,245,247,0.70)', letterSpacing: '-0.1px' }}>Migration Scenario</div>
+          <div style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(48,209,88,0.10)', border: '1px solid rgba(48,209,88,0.20)', fontSize: 8, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: G }}>
+            {showAllProvinces ? 'Canada' : 'Atlantic Canada'}
+          </div>
+        </div>
+        <div style={{ fontSize: 10, color: 'rgba(245,245,247,0.30)' }}>Province-to-province ecological chain reaction</div>
+      </div>
+
+      {/* Presets Grid */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <Label>Presets</Label>
+          <button onClick={() => setShowAllProvinces(v => !v)}
+            style={{ fontSize: 10, fontWeight: 500, color: '#0A84FF', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            {showAllProvinces ? '← Atlantic only' : 'All provinces'}
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto', paddingRight: 4 }}>
+          {filteredPresets.map(p => {
             const active = store.source_province === p.source_province && store.destination_province === p.destination_province
             return (
               <button
                 key={p.key}
                 onClick={() => store.loadPreset(p.key)}
                 style={{
-                  flexShrink: 0,
-                  padding: '5px 12px',
-                  borderRadius: 8,
-                  fontSize: 11,
-                  fontWeight: 500,
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  fontSize: 11.5,
+                  fontWeight: active ? 600 : 500,
                   cursor: 'pointer',
-                  whiteSpace: 'nowrap',
+                  textAlign: 'left',
                   transition: 'all 0.15s',
-                  background: active ? `${G}14` : 'transparent',
-                  border: `1px solid ${active ? G : 'rgba(255,255,255,0.09)'}`,
-                  color: active ? G : 'rgba(245,245,247,0.40)',
-                }}>
-                {p.label}
+                  background: active ? 'rgba(48,209,88,0.08)' : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${active ? '#30D158' : 'rgba(255,255,255,0.07)'}`,
+                  color: active ? '#30D158' : 'rgba(245,245,247,0.60)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 3,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                  <span style={{ fontWeight: 600 }}>{p.label}</span>
+                </div>
+                {p.description && (
+                  <span style={{ fontSize: 9.5, color: 'rgba(245,245,247,0.30)', fontWeight: 400, lineHeight: 1.3 }}>
+                    {p.description}
+                  </span>
+                )}
               </button>
             )
           })}
         </div>
       </div>
 
-      {/* Province selectors */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {/* Source */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(245,245,247,0.28)' }}>From</div>
-            <button onClick={() => setShowAllProvinces(v => !v)}
-              style={{ fontSize: 10, fontWeight: 500, color: '#0A84FF', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-              {showAllProvinces ? '← Atlantic only' : 'All provinces'}
-            </button>
-          </div>
-          <ProvinceSelect
-            value={store.source_province}
-            onChange={v => store.setInput('source_province', v)}
-            provinces={visibleProvinces}
-          />
-          {sourceProvince && (
-            <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
-              <StatTag label="CO₂" value={`${sourceProvince.co2_per_capita}t`} color="#0A84FF" />
-              <StatTag label="Forest" value={`${sourceProvince.forest_cover_pct}%`} color={G} />
+      {/* From Province */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <Label>From</Label>
+        <ProvinceSelect
+          value={store.source_province}
+          onChange={v => store.setInput('source_province', v)}
+          provinces={visibleProvinces}
+        />
+        {sourceProvince && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div style={{
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 8,
+              padding: '6px 10px',
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+              <span style={{ fontSize: 9, color: 'rgba(245,245,247,0.30)', textTransform: 'uppercase', fontWeight: 600 }}>CO₂</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#F5F5F7', fontFamily: 'JetBrains Mono, monospace' }}>{sourceProvince.co2_per_capita}t</span>
             </div>
-          )}
-        </div>
-
-        {/* Carbon delta */}
-        {carbonDelta !== null && (
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            padding: '8px 12px', borderRadius: 10,
-            background: carbonDelta > 0 ? `${R}0A` : `${G}0A`,
-            border: `1px solid ${carbonDelta > 0 ? `${R}30` : `${G}30`}`,
-          }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: carbonDelta > 0 ? R : G }}>
-              {carbonDelta > 0 ? '↑' : '↓'}
-            </span>
-            <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: carbonDelta > 0 ? R : G }}>
-              {Math.abs(carbonDelta).toFixed(1)} t CO₂/person/yr
-            </span>
-            <span style={{ fontSize: 10, color: 'rgba(245,245,247,0.30)' }}>
-              {carbonDelta > 0 ? 'footprint rises' : 'footprint drops'}
-            </span>
+            <div style={{
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 8,
+              padding: '6px 10px',
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+              <span style={{ fontSize: 9, color: 'rgba(245,245,247,0.30)', textTransform: 'uppercase', fontWeight: 600 }}>Forest</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#30D158', fontFamily: 'JetBrains Mono, monospace' }}>{sourceProvince.forest_cover_pct}%</span>
+            </div>
           </div>
         )}
+      </div>
 
-        {/* Destination */}
-        <div>
-          <Label>To</Label>
-          <ProvinceSelect
-            value={store.destination_province}
-            onChange={v => store.setInput('destination_province', v)}
-            provinces={visibleProvinces.filter(p => p.name !== store.source_province)}
-          />
-          {destProvince && (
-            <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
-              <StatTag label="CO₂" value={`${destProvince.co2_per_capita}t`} color="#FF9F0A" />
-              <StatTag label="Bio." value={`${destProvince.biodiversity_index}/100`} color="#BF5AF2" />
-            </div>
-          )}
+      {/* Carbon Delta Footprint Indicator in Between */}
+      {carbonDelta !== null && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '8px 12px',
+          borderRadius: 12,
+          background: carbonDelta > 0 ? 'rgba(255,55,95,0.04)' : 'rgba(48,209,88,0.04)',
+          border: `1px solid ${carbonDelta > 0 ? 'rgba(255,55,95,0.15)' : 'rgba(48,209,88,0.15)'}`,
+          textAlign: 'center',
+        }}>
+          <div style={{
+            fontSize: 14,
+            fontWeight: 800,
+            color: carbonDelta > 0 ? '#FF375F' : '#30D158',
+            lineHeight: 1,
+            marginBottom: 2
+          }}>
+            {carbonDelta > 0 ? '↑' : '↓'}
+          </div>
+          <div style={{
+            fontSize: 11.5,
+            fontFamily: 'JetBrains Mono, monospace',
+            fontWeight: 700,
+            color: carbonDelta > 0 ? '#FF375F' : '#30D158',
+          }}>
+            {Math.abs(carbonDelta).toFixed(1)} t CO₂/person/yr
+          </div>
+          <div style={{
+            fontSize: 9.5,
+            color: 'rgba(245,245,247,0.40)',
+            fontWeight: 500,
+            marginTop: 2
+          }}>
+            {carbonDelta > 0 ? 'footprint rises' : 'footprint drops'}
+          </div>
         </div>
+      )}
+
+      {/* To Province */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <Label>To</Label>
+        <ProvinceSelect
+          value={store.destination_province}
+          onChange={v => store.setInput('destination_province', v)}
+          provinces={visibleProvinces.filter(p => p.name !== store.source_province)}
+        />
+        {destProvince && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div style={{
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 8,
+              padding: '6px 10px',
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+              <span style={{ fontSize: 9, color: 'rgba(245,245,247,0.30)', textTransform: 'uppercase', fontWeight: 600 }}>CO₂</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#F5F5F7', fontFamily: 'JetBrains Mono, monospace' }}>{destProvince.co2_per_capita}t</span>
+            </div>
+            <div style={{
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 8,
+              padding: '6px 10px',
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+              <span style={{ fontSize: 9, color: 'rgba(245,245,247,0.30)', textTransform: 'uppercase', fontWeight: 600 }}>Bio.</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#BF5AF2', fontFamily: 'JetBrains Mono, monospace' }}>{destProvince.biodiversity_index}/100</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Migration Reason */}
@@ -204,8 +331,8 @@ export function SimulationForm() {
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '9px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                   transition: 'all 0.15s',
-                  background: active ? `${G}0D` : 'rgba(255,255,255,0.025)',
-                  border: `1px solid ${active ? `${G}55` : 'rgba(255,255,255,0.07)'}`,
+                  background: active ? 'rgba(48,209,88,0.08)' : 'rgba(255,255,255,0.025)',
+                  border: `1px solid ${active ? 'rgba(48,209,88,0.40)' : 'rgba(255,255,255,0.07)'}`,
                 }}>
                 {/* Radio dot */}
                 <div style={{
@@ -318,18 +445,6 @@ function ProvinceSelect({ value, onChange, provinces }) {
         position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
         pointerEvents: 'none', color: 'rgba(245,245,247,0.30)', fontSize: 10,
       }}>▼</div>
-    </div>
-  )
-}
-
-function StatTag({ label, value, color }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 7,
-      background: `${color}0D`, border: `1px solid ${color}22`,
-    }}>
-      <span style={{ fontSize: 10, color: 'rgba(245,245,247,0.35)' }}>{label}</span>
-      <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color }}>{value}</span>
     </div>
   )
 }

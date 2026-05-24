@@ -9,6 +9,7 @@ import { EnvironmentGauges } from '../components/charts/EnvironmentGauges'
 import { RecommendationCards } from '../components/insights/RecommendationCards'
 import { AtlanticIndicatorsPanel } from '../components/charts/AtlanticIndicatorsPanel'
 import { AnimatedCounter } from '../components/ui/AnimatedCounter'
+import { CrisisMap } from '../components/map/CrisisMap'
 import { formatCarbon, formatHectares, formatPopulation } from '../utils/formatters'
 
 const SEV = {
@@ -139,6 +140,19 @@ export default function Simulate() {
               style={{ padding: '16px 20px 24px', display: 'flex', flexDirection: 'column', gap: 14, minHeight: '100%' }}>
 
               <RouteHeader result={result} />
+
+              {/* Interactive Crisis Map — element-themed heatmap */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 }}
+                style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div style={{ padding: '12px 18px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.025)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(245,245,247,0.25)' }}>
+                    Interactive Crisis Map — Migration Flow &amp; Ecological Stress
+                  </div>
+                </div>
+                <CrisisMap result={result} />
+              </motion.div>
+
               <KPIStrip result={result} />
 
               <Panel label="Ecological Stress Indicators">

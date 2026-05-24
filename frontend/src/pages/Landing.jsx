@@ -78,7 +78,7 @@ export default function Landing() {
         {/* CTAs */}
         <motion.div {...fadeIn(0.24)} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 96 }}>
           <button
-            onClick={() => navigate('/cityflow?demo=true')}
+            onClick={() => navigate('/cityflow')}
             style={{ padding: '14px 28px', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#fff', background: 'linear-gradient(135deg,#FF375F,#FF9F0A)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 0 40px rgba(255,55,95,0.25)', letterSpacing: '-0.2px' }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.7)', animation: 'dangerPulse 1.5s infinite' }} />
             Watch the Chain Reaction
@@ -121,7 +121,7 @@ export default function Landing() {
         {/* ── Two tools ──────────────────────────────────────────────────── */}
         <motion.div {...fadeIn(0.44)} style={{ width: '100%', maxWidth: 780, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 96 }}>
           <ToolCard
-            onClick={() => navigate('/cityflow?demo=true')}
+            onClick={() => navigate('/cityflow')}
             badge="LIVE" badgeColor="#FF375F"
             icon="🏙️" iconBg="rgba(255,55,95,0.08)" iconBorder="rgba(255,55,95,0.2)"
             title="CityFlow Simulator"

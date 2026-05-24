@@ -21,11 +21,17 @@ export const POLICY_EFFECTS = {
 //   heatwave  — BC 2021 heat dome (619 deaths); CDC heat illness epidemiology
 //   drought   — FAO 2022 Global Drought Snapshot; Prairies 2021 drought agricultural impact
 const DISASTER_EFFECTS = {
-  wildfire:  { housing: 0.06, water: 0.10, waste: 0.20, air: 0.60, health: 0.32, energy: 0.18 },
-  flood:     { housing: 0.22, water: 0.58, waste: 0.35, air: 0.05, health: 0.24, energy: 0.14 },
-  conflict:  { housing: 0.35, water: 0.25, waste: 0.18, air: 0.14, health: 0.50, energy: 0.40 },
-  heatwave:  { housing: 0.03, water: 0.40, waste: 0.10, air: 0.28, health: 0.60, energy: 0.50 },
-  drought:   { housing: 0.03, water: 0.55, waste: 0.08, air: 0.07, health: 0.28, energy: 0.08 },
+  wildfire:              { housing: 0.06, water: 0.10, waste: 0.20, air: 0.60, health: 0.32, energy: 0.18 },
+  flood:                 { housing: 0.22, water: 0.58, waste: 0.35, air: 0.05, health: 0.24, energy: 0.14 },
+  conflict:              { housing: 0.35, water: 0.25, waste: 0.18, air: 0.14, health: 0.50, energy: 0.40 },
+  heatwave:              { housing: 0.03, water: 0.40, waste: 0.10, air: 0.28, health: 0.60, energy: 0.50 },
+  drought:               { housing: 0.03, water: 0.55, waste: 0.08, air: 0.07, health: 0.28, energy: 0.08 },
+  water_scarcity:        { housing: 0.02, water: 0.52, waste: 0.06, air: 0.04, health: 0.30, energy: 0.12 },
+  water_contamination:   { housing: 0.03, water: 0.48, waste: 0.35, air: 0.06, health: 0.50, energy: 0.08 },
+  air_pollution_crisis:  { housing: 0.03, water: 0.06, waste: 0.14, air: 0.58, health: 0.42, energy: 0.22 },
+  earthquake:            { housing: 0.48, water: 0.18, waste: 0.28, air: 0.10, health: 0.38, energy: 0.42 },
+  landslide:             { housing: 0.35, water: 0.12, waste: 0.30, air: 0.05, health: 0.32, energy: 0.15 },
+  soil_degradation:      { housing: 0.05, water: 0.22, waste: 0.18, air: 0.08, health: 0.28, energy: 0.06 },
 }
 
 // ─── Return migration rates — UNHCR Internal Displacement / IDMC data ────────
@@ -119,6 +125,9 @@ function gravityWeightedRoute(sourceId, allCities, routes) {
     const dest   = allCities.find(c => c.id === destId)
     if (!dest) return { destId, weight: 0 }
 
+    // Nobody migrates toward an active disaster zone
+    if (dest.isDisasterActive) return { destId, weight: 0 }
+
     const dx       = dest.x - source.x
     const dy       = dest.y - source.y
     const distance = Math.sqrt(dx * dx + dy * dy) || 1
@@ -157,6 +166,9 @@ function getRouteWeights(sourceId, allCities, routes) {
     const destId = route.from === sourceId ? route.to : route.from
     const dest   = allCities.find(c => c.id === destId)
     if (!dest) return { route, destId, weight: 0 }
+
+    // Nobody evacuates toward another active disaster zone
+    if (dest.isDisasterActive) return { route, destId, weight: 0 }
 
     const dx             = dest.x - source.x
     const dy             = dest.y - source.y
@@ -212,15 +224,15 @@ const INITIAL_CITIES = [
     // CMA pop: 175,755 (StatCan 2021 Census, Table 98-10-0002-01)
     // Real coords: 46.09°N, 64.77°W
     id: 'moncton',
-    name: 'Moncton',
-    subtitle: 'New Brunswick',
-    x: 32, y: 56,
+    name: 'City A',
+    subtitle: 'Moncton · New Brunswick',
+    x: 10, y: 54,
     basePop: 175755, pop: 175755,
     stress: 15, status: 'healthy', ecoScore: 97,
     resources:     { housing: 12, water: 16, waste: 13, air: 10, health: 14, energy: 11 },
     baseResources: { housing: 12, water: 16, waste: 13, air: 10, health: 14, energy: 11 },
     capacities:    { housing: 255000, water: 255000, waste: 255000, air: 255000, health: 255000, energy: 255000 },
-    isDisasterActive: false, disasterType: null, disasterTimer: 0, disasterDuration: 1000, disasterDisplaced: 0, disasterSeverity: 3, disasterAffectedPct: 75, displacementQueue: 0, recoveryPhase: false, recoveryBoost: 1.0, recoveryTimer: 0, returnQueue: 0, cascadesRecent: 0, lastCascadeTick: 0, history: [],
+    isDisasterActive: false, disasterType: null, disasterTimer: 0, disasterDuration: 1000, disasterDisplaced: 0, disasterSeverity: 3, disasterAffectedPct: 75, displacementQueue: 0, recoveryPhase: false, recoveryBoost: 1.0, recoveryTimer: 0, returnQueue: 0, cascadesRecent: 0, lastCascadeTick: 0, refugeeLoad: 0, history: [],
   },
   {
     // Nova Scotia — regional hub, Hurricane Fiona 2022, coastal flood risk
@@ -228,15 +240,15 @@ const INITIAL_CITIES = [
     // Stress 30: CMHC 2023 — vacancy rate 0.9%, average 2BR rent $1,847/mo (+42% since 2020)
     // Real coords: 44.65°N, 63.58°W
     id: 'halifax',
-    name: 'Halifax',
-    subtitle: 'Nova Scotia',
-    x: 38, y: 70,
+    name: 'City B',
+    subtitle: 'Halifax · Nova Scotia',
+    x: 22, y: 80,
     basePop: 465703, pop: 465703,
     stress: 30, status: 'healthy', ecoScore: 92,
     resources:     { housing: 32, water: 24, waste: 22, air: 20, health: 26, energy: 22 },
     baseResources: { housing: 32, water: 24, waste: 22, air: 20, health: 26, energy: 22 },
     capacities:    { housing: 670000, water: 670000, waste: 670000, air: 670000, health: 670000, energy: 670000 },
-    isDisasterActive: false, disasterType: null, disasterTimer: 0, disasterDuration: 1000, disasterDisplaced: 0, disasterSeverity: 3, disasterAffectedPct: 75, displacementQueue: 0, recoveryPhase: false, recoveryBoost: 1.0, recoveryTimer: 0, returnQueue: 0, cascadesRecent: 0, lastCascadeTick: 0, history: [],
+    isDisasterActive: false, disasterType: null, disasterTimer: 0, disasterDuration: 1000, disasterDisplaced: 0, disasterSeverity: 3, disasterAffectedPct: 75, displacementQueue: 0, recoveryPhase: false, recoveryBoost: 1.0, recoveryTimer: 0, returnQueue: 0, cascadesRecent: 0, lastCascadeTick: 0, refugeeLoad: 0, history: [],
   },
   {
     // Prince Edward Island — smallest province, agricultural, storm surge risk
@@ -246,13 +258,13 @@ const INITIAL_CITIES = [
     id: 'charlottetown',
     name: 'Charlottetown',
     subtitle: 'Prince Edward Island',
-    x: 46, y: 50,
+    x: 50, y: 36,
     basePop: 75150, pop: 75150,
     stress: 18, status: 'healthy', ecoScore: 98,
     resources:     { housing: 18, water: 12, waste: 9, air: 7, health: 10, energy: 8 },
     baseResources: { housing: 18, water: 12, waste: 9, air: 7, health: 10, energy: 8 },
     capacities:    { housing: 112000, water: 112000, waste: 112000, air: 112000, health: 112000, energy: 112000 },
-    isDisasterActive: false, disasterType: null, disasterTimer: 0, disasterDuration: 1000, disasterDisplaced: 0, disasterSeverity: 3, disasterAffectedPct: 75, displacementQueue: 0, recoveryPhase: false, recoveryBoost: 1.0, recoveryTimer: 0, returnQueue: 0, cascadesRecent: 0, lastCascadeTick: 0, history: [],
+    isDisasterActive: false, disasterType: null, disasterTimer: 0, disasterDuration: 1000, disasterDisplaced: 0, disasterSeverity: 3, disasterAffectedPct: 75, displacementQueue: 0, recoveryPhase: false, recoveryBoost: 1.0, recoveryTimer: 0, returnQueue: 0, cascadesRecent: 0, lastCascadeTick: 0, refugeeLoad: 0, history: [],
   },
   {
     // Newfoundland — island province, isolated, severe storm/blizzard risk
@@ -263,13 +275,13 @@ const INITIAL_CITIES = [
     id: 'st-johns',
     name: "St. John's",
     subtitle: 'Newfoundland & Labrador',
-    x: 78, y: 44,
+    x: 84, y: 22,
     basePop: 232684, pop: 232684,
     stress: 20, status: 'healthy', ecoScore: 99,
     resources:     { housing: 16, water: 16, waste: 13, air: 10, health: 14, energy: 12 },
     baseResources: { housing: 16, water: 16, waste: 13, air: 10, health: 14, energy: 12 },
     capacities:    { housing: 340000, water: 340000, waste: 340000, air: 340000, health: 340000, energy: 340000 },
-    isDisasterActive: false, disasterType: null, disasterTimer: 0, disasterDuration: 1000, disasterDisplaced: 0, disasterSeverity: 3, disasterAffectedPct: 75, displacementQueue: 0, recoveryPhase: false, recoveryBoost: 1.0, recoveryTimer: 0, returnQueue: 0, cascadesRecent: 0, lastCascadeTick: 0, history: [],
+    isDisasterActive: false, disasterType: null, disasterTimer: 0, disasterDuration: 1000, disasterDisplaced: 0, disasterSeverity: 3, disasterAffectedPct: 75, displacementQueue: 0, recoveryPhase: false, recoveryBoost: 1.0, recoveryTimer: 0, returnQueue: 0, cascadesRecent: 0, lastCascadeTick: 0, refugeeLoad: 0, history: [],
   },
 ]
 
@@ -289,16 +301,16 @@ const INITIAL_CITIES = [
 //   stj-mon  — Same Marine Atlantic crossing + Trans-Canada west via CB Link; +2.5 hr drive
 const ROUTES = [
   // Trans-Canada Hwy 104 via Amherst — 4-lane, LOS C: ~1,500 veh/hr × 1.8 ppl/veh
-  { id: 'mon-hal', from: 'moncton',       to: 'halifax',       cpX: 33, cpY: 65, capacityPerHour: 2700, travelTimeHours: 2.5  },
+  { id: 'mon-hal', from: 'moncton',       to: 'halifax',       cpX: 10, cpY: 72, capacityPerHour: 2700, travelTimeHours: 2.5  },
   // Confederation Bridge (12.9 km) — 2-lane bidirectional, design capacity 1,800 veh/hr × 1.8
-  { id: 'mon-clt', from: 'moncton',       to: 'charlottetown', cpX: 39, cpY: 49, capacityPerHour: 3240, travelTimeHours: 1.5  },
+  { id: 'mon-clt', from: 'moncton',       to: 'charlottetown', cpX: 30, cpY: 38, capacityPerHour: 3240, travelTimeHours: 1.5  },
   // Northumberland Strait ferry (Wood Islands ↔ Caribou) — peak emergency: ~108 pax/hr
-  { id: 'clt-hal', from: 'charlottetown', to: 'halifax',       cpX: 44, cpY: 62, capacityPerHour: 108,  travelTimeHours: 1.25 },
+  { id: 'clt-hal', from: 'charlottetown', to: 'halifax',       cpX: 34, cpY: 64, capacityPerHour: 108,  travelTimeHours: 1.25 },
   // Marine Atlantic (North Sydney ↔ Port aux Basques) — 2 ferries × 1,222 pax = 326/hr
   // CRITICAL BOTTLENECK: only surface evacuation route from NL; ferry is the sole lifeline
-  { id: 'stj-hal', from: 'st-johns',      to: 'halifax',       cpX: 60, cpY: 62, capacityPerHour: 326,  travelTimeHours: 7.5  },
+  { id: 'stj-hal', from: 'st-johns',      to: 'halifax',       cpX: 55, cpY: 58, capacityPerHour: 326,  travelTimeHours: 7.5  },
   // Same Marine Atlantic crossing + Trans-Canada drive to Moncton (+2.5 hr)
-  { id: 'stj-mon', from: 'st-johns',      to: 'moncton',       cpX: 55, cpY: 44, capacityPerHour: 326,  travelTimeHours: 10.0 },
+  { id: 'stj-mon', from: 'st-johns',      to: 'moncton',       cpX: 48, cpY: 28, capacityPerHour: 326,  travelTimeHours: 10.0 },
 ]
 
 const HISTORY_MAX          = 200
@@ -349,6 +361,8 @@ export const useCityFlowStore = create((set, get) => ({
     set(state => {
       const city = state.cities.find(c => c.id === cityId)
       if (!city || city.isDisasterActive) return state
+      // Only one disaster allowed across the entire network at a time
+      if (state.cities.some(c => c.isDisasterActive)) return state
       return {
         cities: state.cities.map(c =>
           c.id === cityId ? {
@@ -406,11 +420,13 @@ export const useCityFlowStore = create((set, get) => ({
     set(prev => {
       const newTickCount    = prev.tickCount + 1
       let updatedCities     = [...prev.cities]
-      // Keep at most 2 visual waves per route — prevents figure pile-up on the canvas
+      // Keep at most 6 visual waves per route during disasters, 3 during peacetime
+      const _anyDisaster = prev.cities.some(c => c.isDisasterActive)
+      const _waveLimit   = _anyDisaster ? 6 : 3
       const _routeSeen = {}
       let newMigrants = prev.migrants.filter(m => {
         _routeSeen[m.routeId] = (_routeSeen[m.routeId] || 0) + 1
-        return _routeSeen[m.routeId] <= 2
+        return _routeSeen[m.routeId] <= _waveLimit
       })
       let newEvents         = [...prev.events]
       let activeDisasters   = 0
@@ -473,7 +489,7 @@ export const useCityFlowStore = create((set, get) => ({
           const elapsed      = 1 - (c.disasterTimer / (c.disasterDuration || 1000))
           const urgency      = Math.exp(-4 * elapsed)
           // divisor 250 spreads total displacement across full disaster duration
-          const newEvacuees  = Math.floor(exposedPop * rate * severityMult * urgency / 250)
+          const newEvacuees  = Math.floor(exposedPop * rate * severityMult * urgency / 120)
           if (newEvacuees > 0) {
             c.displacementQueue = (c.displacementQueue || 0) + newEvacuees
             c.disasterDisplaced = (c.disasterDisplaced || 0) + newEvacuees
@@ -518,8 +534,9 @@ export const useCityFlowStore = create((set, get) => ({
           if (sendCount < 1) continue
           c.pop               -= sendCount
           c.displacementQueue -= sendCount
-          // Only spawn a visual wave if this route has fewer than 2 active waves
-          if ((wavesPerRoute[route.id] || 0) < 2) {
+          // Only spawn a visual wave if under the active wave limit
+          const _waveMax = _anyDisaster ? 6 : 3
+          if ((wavesPerRoute[route.id] || 0) < _waveMax) {
             wavesPerRoute[route.id] = (wavesPerRoute[route.id] || 0) + 1
             newMigrants.push({
               id:          Math.random().toString(),
@@ -638,7 +655,9 @@ export const useCityFlowStore = create((set, get) => ({
       const { economic: wEcon, housing: wHous, climate: wClim } = prev.sim.migrationWeights
       const weekInterval = Math.max(24, Math.floor(MIGRATION_WEEK_TICKS / Math.max(0.5, prev.sim.speed)))
 
-      if (newTickCount % weekInterval === 0) {
+      // Suppress background migration while any disaster is active — green leisure
+      // migrants make no narrative sense alongside disaster refugees fleeing for their lives.
+      if (newTickCount % weekInterval === 0 && !_anyDisaster) {
         prev.routes.forEach(route => {
           const rates = ROUTE_MIGRATION_RATES[route.id]
           if (!rates) return
@@ -654,6 +673,8 @@ export const useCityFlowStore = create((set, get) => ({
 
           for (const { src, dst, weeklyBase, reverse } of directions) {
             if (src.pop <= 100) continue
+            // Don't send migrants into an active disaster zone
+            if (dst.isDisasterActive) continue
 
             // ── Driver 1: Economic (proxy: stress differential)
             // High when source city is stressed (bad jobs/conditions) vs destination.
@@ -726,6 +747,14 @@ export const useCityFlowStore = create((set, get) => ({
         }
       })
 
+      // Pre-compute in-transit disaster refugee counts per destination city
+      const inTransitPerCity = {}
+      remainingMigrants.forEach(m => {
+        if (m.type === 'disaster' || m.type === 'cascade') {
+          inTransitPerCity[m.to] = (inTransitPerCity[m.to] || 0) + m.count
+        }
+      })
+
       // ── 5. Stress calculation + cascade + eco-score ───────────────────────
       updatedCities = updatedCities.map(city => {
         let c = { ...city }
@@ -748,6 +777,8 @@ export const useCityFlowStore = create((set, get) => ({
           c.resources.air     * 0.10 +
           c.resources.waste   * 0.08
         )
+        // Refugee burden: receiving city stress rises as disaster migrants arrive in transit
+        c.stress = Math.min(100, c.stress + (c.refugeeLoad || 0) * 0.55)
         c.status = getStatus(c.stress)
 
         // Cascade: critically stressed city forces evacuation into the network.
@@ -766,7 +797,7 @@ export const useCityFlowStore = create((set, get) => ({
         const cascadeFatigue    = Math.max(0.05, 1 - (c.cascadesRecent || 0) * 0.25)
         const logisticP         = 1 / (1 + Math.exp(-0.12 * (c.stress - 85)))
         const cascadeTickP      = logisticP * 0.04 * prev.sim.speed * cascadeFatigue
-        if (c.stress > 78 && Math.random() < cascadeTickP) {
+        if (!c.isDisasterActive && c.stress > 78 && Math.random() < cascadeTickP) {
           const targetId = gravityWeightedRoute(c.id, updatedCities, prev.routes)
           const route    = targetId
             ? prev.routes.find(r => (r.from === c.id && r.to === targetId) || (r.to === c.id && r.from === targetId))
@@ -822,6 +853,14 @@ export const useCityFlowStore = create((set, get) => ({
           const ecoDecay    = popExcess * 0.20 + (c.isDisasterActive ? 0.12 : 0)
           const ecoRecovery = popDeficit * 0.03    // IPCC: rewilding is slow (decades in reality)
           c.ecoScore = Math.max(0, Math.min(100, (c.ecoScore ?? 100) - ecoDecay + ecoRecovery))
+
+          // Refugee load: accumulates fast as disaster migrants arrive; decays slowly so city stays stressed
+          const incomingNow = inTransitPerCity[c.id] || 0
+          if (incomingNow > 0) {
+            c.refugeeLoad = Math.min(100, (c.refugeeLoad || 0) + incomingNow * 0.006)
+          } else if (!c.isDisasterActive) {
+            c.refugeeLoad = Math.max(0, (c.refugeeLoad || 0) - 0.8)
+          }
 
           // History sample
           const newPoint = {

@@ -6,7 +6,7 @@ import { EventFeed } from './EventFeed'
 import { useCityFlowStore } from '../../store/cityflowStore'
 
 const TABS = [
-  { id: 'disasters', label: 'Disasters' },
+  { id: 'disasters', label: 'Triggers' },
   { id: 'controls',  label: 'Controls'  },
   { id: 'city',      label: 'City'      },
   { id: 'events',    label: 'Events'    },
