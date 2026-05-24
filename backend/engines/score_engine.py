@@ -31,7 +31,7 @@ def compute_ecological_scorecard(final_dest: dict, final_src: dict, source: dict
 
     # Years to ecosystem recovery if migration stops (rough estimate)
     recovery_years = round(final_dest["forest_loss_ha"] / max(source["rewilding_rate_pct_per_year"] / 100 * source["land_area_km2"] * 100, 1))
-    recovery_years = min(recovery_years, 200)
+    recovery_years = max(1, min(recovery_years, 200))
 
     return {
         "ecological_stress": ecological_stress,

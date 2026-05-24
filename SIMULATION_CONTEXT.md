@@ -601,6 +601,141 @@ const ecoRecovery = popDeficit * 0.03  // IPCC: rewilding is slow (decades in re
 
 ---
 
+## Layer 11 — Chain Analysis Dashboard Overhaul (Session 5)
+
+**Files:** `frontend/src/pages/ChainAnalysis.jsx`, `frontend/src/components/insights/RecommendationCards.jsx`, `frontend/src/store/chainStore.js`, `frontend/src/pages/CityFlowSimulator.jsx`, `backend/engines/score_engine.py`
+
+Five functional improvements to the ecological analysis dashboard.
+
+---
+
+### 11A — Recovery Years Bug Fix
+
+**File:** `backend/engines/score_engine.py`
+
+`recovery_years` was computed as `round(forest_loss_ha / rewilding_rate)`. For small displaced populations or short durations, `forest_loss_ha` is near zero, rounding to 0. The header showed "0 yrs" which is a credibility failure.
+
+```python
+# Before:
+recovery_years = min(recovery_years, 200)
+
+# After:
+recovery_years = max(1, min(recovery_years, 200))
+```
+
+Display in `ChainHeader` also guards against 0: shows `< 1` if the value is less than 1.
+
+---
+
+### 11B — Displacement Chain Explainer
+
+**File:** `frontend/src/pages/ChainAnalysis.jsx` (new `CascadeExplainer` component)
+
+**Store:** `frontend/src/store/chainStore.js` (`chainEvents`, `setChainEvents`)
+**Caller:** `frontend/src/pages/CityFlowSimulator.jsx` (`chainStore.setChainEvents(events)` before API call)
+
+The `chainEvents` array (raw events sent to `/simulate/chain`) is now stored in chainStore before the API call. The `CascadeExplainer` component reads it and renders a vertical timeline with connecting lines — each event as a row showing icon, type label, source→destination, displaced count.
+
+- Cascade events styled in red with "stress overload" label
+- Disaster events in type color (wildfire orange, flood blue, heatwave yellow, drought tan)
+- Connecting vertical line between consecutive events
+- Only rendered when `chainEvents.length > 0` — invisible if triggered via fallback single-event path
+
+Event data format stored:
+```js
+{ source_province, destination_province, population_size, disaster_type, event_type }
+```
+
+---
+
+### 11C — Ecological Stress Sparkline Per City Card
+
+**File:** `frontend/src/pages/ChainAnalysis.jsx` (new `Sparkline` component)
+
+The backend `destination_timeline` (month-by-month data already computed by `generate_timeline()`) was being completely ignored by the frontend. Now surfaced as an 110×28px SVG sparkline per receiving city card.
+
+**Data aggregation:** For cities receiving migration from multiple sources (e.g. Halifax receiving from both NB and NL), `getDestTimeline()` merges all groups sharing that destination, taking `Math.max` per month for stress metrics and `Math.min` for biodiversity index:
+```js
+function getDestTimeline(groups, provinceName) {
+  const matching = groups.filter(g => g.destination_province === provinceName)
+  // ...max stress, min biodiversity per month across all matching groups
+}
+```
+
+Sparkline: area fill + polyline + final-value dot. Color maps to final stress: red (>60), orange (>40), green (otherwise).
+
+---
+
+### 11D — Full Timeline Drilldown Per City Card
+
+**File:** `frontend/src/pages/ChainAnalysis.jsx` (new `TimelineChart` component, expanded state in `ProvinceCard`)
+
+Clicking any receiving city card header expands/collapses a full multi-metric chart (animated via Framer Motion `height: 0 → 'auto'`).
+
+**Chart:** SVG `viewBox="0 0 560 90"` with `preserveAspectRatio="none"` (responsive width). Three lines:
+
+| Line | Metric | Color |
+|---|---|---|
+| Red | Ecological Stress (0–100) | `#FF375F` |
+| Blue | Watershed Stress (0–100) | `#0A84FF` |
+| Green | Biodiversity Index (0–100) | `#30D158` |
+
+- Horizontal grid lines at 0/25/50/75/100
+- Y-axis labels (0–100)
+- X-axis month labels at ~5 evenly-spaced positions
+- Legend row below chart
+
+Chevron indicator (▾) in card header rotates 180° when expanded.
+
+---
+
+### 11E — Re-analyse Button (Live Refresh)
+
+**File:** `frontend/src/pages/ChainAnalysis.jsx` (nav bar + `handleRefresh`)
+**Store:** `frontend/src/store/chainStore.js` (`lastRequest`, `setLastRequest`)
+**Caller:** `frontend/src/pages/CityFlowSimulator.jsx` (`chainStore.setLastRequest({ events, duration_months: 24 })`)
+
+`lastRequest` stores the exact payload sent to `/simulate/chain`. The nav bar shows a "↻ Re-analyse" button whenever `lastRequest` is set.
+
+`handleRefresh` in `ChainAnalysis`:
+1. Snapshots current live city states from `useCityFlowStore` (so the analysis reflects current sim state)
+2. Sets loading state, clears result (shows spinner)
+3. Re-POSTs `lastRequest` to `/api/simulate/chain`
+4. Updates result on success / sets error on failure
+
+Button shows "⏳ Analysing…" and is disabled while in flight.
+
+---
+
+### 11F — Actionable Recommendations
+
+**File:** `frontend/src/components/insights/RecommendationCards.jsx` (new `onSimulate` prop + simulator button)
+**File:** `frontend/src/pages/CityFlowSimulator.jsx` (new `focus` query param handler)
+
+Each recommendation card now has an "→ Apply in Simulator" button below the impact line. Clicking navigates to `/cityflow?focus=<highestStressCity>`.
+
+In `CityFlowSimulator`, a new effect on mount reads the `focus` query param and auto-selects that city:
+```js
+const focus = searchParams.get('focus')
+if (focus) { selectCity(focus); setSearchParams({}) }
+```
+
+The `highStressCity` is computed in `Dashboard` as the destination city with maximum `ecological_stress` across all groups — so the button always points at the most critical receiving city.
+
+Each recommendation also shows a plain-English simulator hint explaining which parameter the policy would target:
+```js
+const SIM_HINT = {
+  forest:      'Restrict greenfield expansion — reduce land conversion rate',
+  water:       'Boost water infrastructure — lower watershed stress growth',
+  heat:        'Increase urban canopy — offset heat island effect',
+  biodiversity:'Establish wildlife corridors — slow biodiversity index decline',
+  carbon:      'Accelerate grid decarbonisation — reduce per-capita emissions delta',
+  source:      'Fund rewilding at source — accelerate land succession',
+}
+```
+
+---
+
 ## File Change Summary
 
 | File | Change type | What changed |
@@ -619,6 +754,11 @@ const ecoRecovery = popDeficit * 0.03  // IPCC: rewilding is slow (decades in re
 | `frontend/src/hooks/useWeatherAutoTrigger.js` | Modified (Session 4) | Source citations on all thresholds; corrected affected population formulas; drought affected % 70→40% |
 | `frontend/src/pages/CityFlowSimulator.jsx` | Modified (Session 4) | Fixed stale `migrationPressure` → `migrationWeights`; `useSituationReport` derives dominant driver from weights |
 | `frontend/src/components/cityflow/MigrantWalkers.js` | Modified (Session 4) | Removed particle streams + capacity strokes; static dotted routes only; wave cap at 2/route; `resetCtx()` between sections; increased figure count/scale |
+| `backend/engines/score_engine.py` | Modified (Session 5) | `recovery_years` floor raised to 1 — prevents "0 yrs" display |
+| `frontend/src/store/chainStore.js` | Modified (Session 5) | Added `chainEvents` + `lastRequest` fields and setters |
+| `frontend/src/pages/CityFlowSimulator.jsx` | Modified (Session 5) | Stores `chainEvents` + `lastRequest` in chainStore before API call; added `focus` query param handler that auto-selects city on mount |
+| `frontend/src/pages/ChainAnalysis.jsx` | Rebuilt (Session 5) | `CascadeExplainer` (displacement chain timeline); `Sparkline` per city card; `TimelineChart` in expandable drilldown; `↻ Re-analyse` button in nav with live city state snapshot; `recoveryDisplay` shows `< 1` guard |
+| `frontend/src/components/insights/RecommendationCards.jsx` | Modified (Session 5) | `onSimulate` prop + "→ Apply in Simulator" button per rec; `SIM_HINT` map shows plain-English simulator hint per category |
 
 ---
 
@@ -630,9 +770,11 @@ const ecoRecovery = popDeficit * 0.03  // IPCC: rewilding is slow (decades in re
 | Sim time clock ("Day 14 of disaster") | Not built |
 | Return migration (people going home after disaster) | Implemented in Session 3 |
 | Layer 2 of auto-trigger (seasonal probability model) | Not built — weather hook alone won't fire in mild Atlantic seasons |
-| Backend ↔ CityFlow connection | Backend eco analysis and live map are still disconnected systems |
+| Backend ↔ CityFlow live connection | Partially connected (Session 5): chain analysis now re-runs with live city state on Re-analyse; recommendation button auto-focuses city in simulator. True bi-directional policy simulation (rec → adjusts store param) not yet built. |
 | Eco score decay model | Calibrated to IPCC AR6 in Session 4 — defensible but still simplified |
-| Cascade probability | Now logistic-curve based (Session 4) — not yet validated against real emergency data |
+| Cascade probability | Logistic-curve based (Session 4) — not yet validated against real emergency data |
+| Timeline chart: data is real, scale calibrated | Sparkline + drilldown chart now shown (Session 5); month labels are model months, not real calendar dates |
+| Recovery years display | Fixed in Session 5 — no longer shows 0. Underlying formula still simplified (linear rewilding rate from provinces.json). |
 
 ---
 

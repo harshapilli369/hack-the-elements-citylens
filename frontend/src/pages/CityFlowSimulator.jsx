@@ -7,7 +7,7 @@ import { SimulationMap } from '../components/cityflow/SimulationMap'
 import { ControlPanel } from '../components/cityflow/ControlPanel'
 import { OnboardingOverlay } from '../components/cityflow/OnboardingOverlay'
 import { EcoBridge } from '../components/cityflow/EcoBridge'
-import { CITY_PROVINCE_MAP, DISASTER_RECEIVER_MAP } from '../store/cityflowStore'
+import { CITY_PROVINCE_MAP, DISASTER_RECEIVER_MAP, POLICY_EFFECTS } from '../store/cityflowStore'
 import { useWeatherAutoTrigger } from '../hooks/useWeatherAutoTrigger'
 import '../components/cityflow/cityflow.css'
 
@@ -68,41 +68,74 @@ export default function CityFlowSimulator() {
   const migrants          = useCityFlowStore(state => state.migrants)
   const events            = useCityFlowStore(state => state.events)
   const chainLog          = useCityFlowStore(state => state.chainLog)
+  const tickCount         = useCityFlowStore(state => state.tickCount)
   const triggerDisaster   = useCityFlowStore(state => state.triggerDisaster)
   const selectCity        = useCityFlowStore(state => state.selectCity)
+  const applyPolicy       = useCityFlowStore(state => state.applyPolicy)
   const simStore          = useSimulationStore()
   const chainStore        = useChainStore()
 
   const [disasterSummary, setDisasterSummary] = useState(null)
   const [cascadeBanner,   setCascadeBanner]   = useState(null)
+  const [policyBanner,    setPolicyBanner]    = useState(null)
+  const [autoBanner,      setAutoBanner]      = useState(null)
   const [showOnboarding,  setShowOnboarding]  = useState(false)
 
-  const prevEventCount     = useRef(0)
-  const summaryTimer       = useRef(null)
-  const cascadeBannerTimer = useRef(null)
-  const lastCascadeId      = useRef(null)
-  const autoPlayTimers     = useRef([])
+  const prevEventCount      = useRef(0)
+  const summaryTimer        = useRef(null)
+  const cascadeBannerTimer  = useRef(null)
+  const policyBannerTimer   = useRef(null)
+  const lastCascadeId       = useRef(null)
+  const autoPlayTimers      = useRef([])
+  const bridgeRef           = useRef(null)  // always points to latest handleBridgeToEcological
 
   useWeatherAutoTrigger()
 
   const situation = useSituationReport(cities, migrants, activeDisasters, cascadeCount, migrationWeights, totalDisplaced)
   const avgEco    = Math.round(cities.reduce((s, c) => s + (c.ecoScore ?? 100), 0) / cities.length)
 
+  // Sim time: 1 tick = 1 simulated hour
+  const simDay  = Math.floor(tickCount / 24) + 1
+  const simHour = tickCount % 24
+  const simTimeStr = `Day ${simDay} · ${String(simHour).padStart(2, '0')}:00`
+
   useEffect(() => {
-    const isDemo = searchParams.get('demo') === 'true'
+    const isDemo  = searchParams.get('demo')   === 'true'
+    const focus   = searchParams.get('focus')
+    const policy  = searchParams.get('policy')
+
     if (isDemo) { setSearchParams({}); runAutoPlay() }
     else setShowOnboarding(true)
-    return () => autoPlayTimers.current.forEach(clearTimeout)
+
+    if (focus)  selectCity(focus)
+    if (focus && policy) {
+      applyPolicy(focus, policy)
+      const label = POLICY_EFFECTS[policy]?.label || policy
+      const cityName = cities.find(c => c.id === focus)?.name || focus
+      setPolicyBanner(`✅ Policy applied — "${label}" active in ${cityName}`)
+      clearTimeout(policyBannerTimer.current)
+      policyBannerTimer.current = setTimeout(() => setPolicyBanner(null), 6000)
+    }
+    if (focus || policy) setSearchParams({})
+
+    return () => {
+      autoPlayTimers.current.forEach(clearTimeout)
+      clearTimeout(policyBannerTimer.current)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function runAutoPlay() {
     setShowOnboarding(false)
     const push = (fn, ms) => autoPlayTimers.current.push(setTimeout(fn, ms))
-    push(() => selectCity('moncton'), 900)
+    push(() => selectCity('moncton'),                900)
     push(() => triggerDisaster('moncton', 'wildfire'), 2400)   // NB wildfire → people flee to Halifax
-    push(() => selectCity('st-johns'), 11000)
+    push(() => selectCity('st-johns'),              11000)
     push(() => triggerDisaster('st-johns', 'flood'), 12500)    // NL flood → people flee to Halifax
+    // Both disasters resolve at ~19s (wildfire) and ~29s (flood). By 30s both chainLog entries exist.
+    // Show auto-analysis banner at 30s, navigate at 36s.
+    push(() => setAutoBanner('Chain reaction logged — opening ecological analysis…'), 30000)
+    push(() => bridgeRef.current?.(), 36000)
   }
 
   useEffect(() => {
@@ -113,14 +146,16 @@ export default function CityFlowSimulator() {
   }, [isRunning, tick])
 
   useEffect(() => {
+    if (showOnboarding) return   // don't pop cascade banner over onboarding
     if (!cascadeAlert || cascadeAlert.id === lastCascadeId.current) return
     lastCascadeId.current = cascadeAlert.id
     setCascadeBanner(cascadeAlert.cityName)
     clearTimeout(cascadeBannerTimer.current)
     cascadeBannerTimer.current = setTimeout(() => { setCascadeBanner(null); clearCascadeAlert() }, 4500)
-  }, [cascadeAlert, clearCascadeAlert])
+  }, [cascadeAlert, clearCascadeAlert, showOnboarding])
 
   useEffect(() => {
+    if (showOnboarding) { prevEventCount.current = events.length; return }  // skip summary while onboarding active
     if (events.length <= prevEventCount.current) { prevEventCount.current = events.length; return }
     prevEventCount.current = events.length
     const newest = events[0]
@@ -160,17 +195,25 @@ export default function CityFlowSimulator() {
     window.addEventListener('mouseup', onUp)
   }
 
+  // Keep ref current every render — lets autoplay timers always call the latest version
+  // without capturing a stale closure.
+  bridgeRef.current = handleBridgeToEcological
+
   async function handleBridgeToEcological() {
-    // If chainLog has entries, run full chain analysis
-    const validEntries = chainLog.filter(
+    setAutoBanner(null)
+    // Read fresh state from store — this function may be called from a setTimeout
+    // (autoplay), so component-level selectors may be stale.
+    const { chainLog: freshLog, cities: freshCities } = useCityFlowStore.getState()
+
+    const validEntries = freshLog.filter(
       e => e.destId && CITY_PROVINCE_MAP[e.sourceId] && CITY_PROVINCE_MAP[e.destId]
     )
 
     if (validEntries.length === 0) {
       // Fallback: disaster still active, no resolved events yet — single-event to /simulate
-      const sorted     = [...cities].sort((a, b) => (b.basePop - b.pop) - (a.basePop - a.pop))
+      const sorted     = [...freshCities].sort((a, b) => (b.basePop - b.pop) - (a.basePop - a.pop))
       const sourceCity = sorted[0]
-      const destCity   = sorted.find(c => c.pop > c.basePop) || cities.find(c => c.id !== sourceCity.id)
+      const destCity   = sorted.find(c => c.pop > c.basePop) || freshCities.find(c => c.id !== sourceCity.id)
       const displaced  = Math.max(50000, Math.min(800000, Math.round(Math.abs(sourceCity.basePop - sourceCity.pop))))
       const sourceProvince = CITY_PROVINCE_MAP[sourceCity?.id]?.province || 'New Brunswick'
       const destProvince   = CITY_PROVINCE_MAP[destCity?.id]?.province   || 'Nova Scotia'
@@ -192,7 +235,7 @@ export default function CityFlowSimulator() {
     }))
 
     chainStore.reset()
-    chainStore.setCityStates(cities.map(c => ({
+    chainStore.setCityStates(freshCities.map(c => ({
       id: c.id, name: c.name,
       province: CITY_PROVINCE_MAP[c.id]?.province,
       pop: c.pop, basePop: c.basePop,
@@ -200,6 +243,8 @@ export default function CityFlowSimulator() {
       ecoScore: Math.round(c.ecoScore ?? 100),
       status: c.status,
     })))
+    chainStore.setChainEvents(events)
+    chainStore.setLastRequest({ events, duration_months: 24 })
     chainStore.setLoading(true)
     navigate('/chain-analysis')
 
@@ -225,7 +270,7 @@ export default function CityFlowSimulator() {
       {showOnboarding && <OnboardingOverlay onDismiss={() => setShowOnboarding(false)} onAutoPlay={() => { setShowOnboarding(false); runAutoPlay() }} />}
 
       {/* Cascade banner */}
-      {cascadeBanner && (
+      {cascadeBanner && !showOnboarding && (
         <div style={{ position: 'absolute', top: 64, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'center', pointerEvents: 'none', animation: 'slideDown 0.3s ease' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderRadius: 12, background: 'rgba(7,8,15,0.92)', border: '1px solid rgba(255,55,95,0.35)', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(255,55,95,0.15)' }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF375F', animation: 'dangerPulse 1s infinite' }} />
@@ -233,6 +278,30 @@ export default function CityFlowSimulator() {
             <span style={{ color: 'rgba(245,245,247,0.40)', fontSize: 12 }}>—</span>
             <span style={{ color: '#F5F5F7', fontWeight: 600, fontSize: 13 }}>{cascadeBanner}</span>
             <span style={{ color: 'rgba(245,245,247,0.40)', fontSize: 12 }}>overloaded, forcing evacuation into the network</span>
+          </div>
+        </div>
+      )}
+
+      {/* Policy applied banner */}
+      {policyBanner && !showOnboarding && (
+        <div style={{ position: 'absolute', top: cascadeBanner ? 108 : 64, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'center', pointerEvents: 'none', animation: 'slideDown 0.3s ease' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderRadius: 12, background: 'rgba(7,8,15,0.92)', border: '1px solid rgba(48,209,88,0.35)', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(48,209,88,0.12)' }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#30D158' }} />
+            <span style={{ color: '#30D158', fontWeight: 700, fontSize: 12, letterSpacing: '0.05em' }}>POLICY ACTIVE</span>
+            <span style={{ color: 'rgba(245,245,247,0.40)', fontSize: 12 }}>—</span>
+            <span style={{ color: '#F5F5F7', fontWeight: 500, fontSize: 13 }}>{policyBanner}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-analysis banner (autoplay arc) */}
+      {autoBanner && !showOnboarding && (
+        <div style={{ position: 'absolute', top: 64, left: 0, right: 0, zIndex: 50, display: 'flex', justifyContent: 'center', pointerEvents: 'none', animation: 'slideDown 0.3s ease' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderRadius: 12, background: 'rgba(7,8,15,0.92)', border: '1px solid rgba(10,132,255,0.35)', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(10,132,255,0.12)' }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#0A84FF', animation: 'dangerPulse 1s infinite' }} />
+            <span style={{ color: '#0A84FF', fontWeight: 700, fontSize: 12, letterSpacing: '0.05em' }}>ANALYSIS READY</span>
+            <span style={{ color: 'rgba(245,245,247,0.40)', fontSize: 12 }}>—</span>
+            <span style={{ color: '#F5F5F7', fontWeight: 500, fontSize: 13 }}>{autoBanner}</span>
           </div>
         </div>
       )}
@@ -258,6 +327,12 @@ export default function CityFlowSimulator() {
 
         {/* Right: Stats + bridge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Sim time clock */}
+          <div style={{ padding: '4px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(245,245,247,0.28)' }}>Sim</span>
+            <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: isRunning ? '#F5F5F7' : 'rgba(245,245,247,0.35)', letterSpacing: '0.04em' }}>{simTimeStr}</span>
+          </div>
+
           {/* Stats pill */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, overflow: 'hidden' }}>
             <HeaderStat label="Transit"   value={fmtK(totalInTransit)} />
@@ -298,8 +373,8 @@ export default function CityFlowSimulator() {
 
           <SimulationMap />
 
-          {/* Eco Bridge — floats over map after disaster resolves */}
-          <EcoBridge />
+          {/* Eco Bridge — floats over map after disaster resolves; hidden while onboarding is active */}
+          {!showOnboarding && <EcoBridge />}
 
           {/* Situation report */}
           <div style={{ position: 'absolute', bottom: 44, left: 12, right: 12, zIndex: 20 }}>
@@ -346,7 +421,7 @@ export default function CityFlowSimulator() {
       </main>
 
       {/* ── Disaster resolution card ────────────────────────────────────── */}
-      {disasterSummary && (
+      {disasterSummary && !showOnboarding && (
         <div style={{ position: 'absolute', top: 68, left: '50%', transform: 'translateX(-50%)', zIndex: 50, width: 440, borderRadius: 18, overflow: 'hidden', background: 'rgba(7,8,15,0.97)', border: '1px solid rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.7)', backdropFilter: 'blur(24px)', animation: 'slideDown 0.3s ease' }}>
           <div style={{ height: 2, background: 'linear-gradient(90deg,#FF375F,#FF9F0A,#FFD60A)' }} />
           <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>

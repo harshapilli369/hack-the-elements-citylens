@@ -1,5 +1,18 @@
 import { create } from 'zustand'
 
+// ─── Policy simulation effects ───────────────────────────────────────────────
+// Each policy instantly reduces one resource stress metric and boosts eco health.
+// Resources are 0–100 (higher = worse). Reducing them lowers the weighted stress score.
+// Amounts calibrated so a single policy visibly moves the stress bar without being a cheat code.
+export const POLICY_EFFECTS = {
+  forest:      { resource: 'housing', reduction: 15, ecoBoost: 10, label: 'Urban Growth Boundary'         },
+  water:       { resource: 'water',   reduction: 20, ecoBoost:  4, label: 'Water Recycling Infrastructure' },
+  heat:        { resource: 'air',     reduction: 18, ecoBoost:  8, label: 'Green Roof + Canopy Policy'     },
+  biodiversity:{ resource: null,      reduction:  0, ecoBoost: 18, label: 'Wildlife Corridor Network'      },
+  carbon:      { resource: 'energy',  reduction: 15, ecoBoost:  6, label: 'Grid Decarbonisation'           },
+  source:      { resource: null,      reduction:  0, ecoBoost: 15, label: 'Source Rewilding Program', recoveryBoost: 2.0 },
+}
+
 // ─── Per-disaster resource stress rates ───────────────────────────────────────
 // Sources per disaster type:
 //   wildfire  — Canadian Forest Fire Behaviour Prediction System; BC 2021 & Fort McMurray 2016 post-mortems
@@ -359,6 +372,31 @@ export const useCityFlowStore = create((set, get) => ({
 
   clearCascadeAlert: () =>
     set(state => ({ sim: { ...state.sim, cascadeAlert: null } })),
+
+  applyPolicy: (cityId, category) =>
+    set(state => {
+      const fx   = POLICY_EFFECTS[category]
+      const city = state.cities.find(c => c.id === cityId)
+      if (!fx || !city) return state
+      return {
+        cities: state.cities.map(c => {
+          if (c.id !== cityId) return c
+          const resources = { ...c.resources }
+          if (fx.resource) resources[fx.resource] = Math.max(0, resources[fx.resource] - fx.reduction)
+          return {
+            ...c,
+            resources,
+            ecoScore:      Math.min(100, (c.ecoScore ?? 100) + fx.ecoBoost),
+            recoveryBoost: fx.recoveryBoost ? Math.max(c.recoveryBoost || 1.0, fx.recoveryBoost) : (c.recoveryBoost || 1.0),
+            activePolicy:  { category, label: fx.label, appliedAt: Date.now() },
+          }
+        }),
+        events: [
+          { id: Date.now(), msg: `Policy: "${fx.label}" applied in ${city.name} — ecological recovery accelerating`, severity: 'info', time: new Date() },
+          ...state.events,
+        ].slice(0, 50),
+      }
+    }),
 
   // ── Main tick ──────────────────────────────────────────────────────────────
 
