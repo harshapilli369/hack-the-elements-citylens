@@ -32,25 +32,59 @@ Every constant in this simulation has a citation. Every infrastructure bottlenec
 
 ## The Problem
 
-**When regions experience sudden large-scale population displacement, destination environments undergo rapid multi-system degradation across land, water, and air — and existing disaster systems cannot see it coming.**
+### Problem Statement
 
-### What current tools miss
+**When a climate disaster strikes one city, the people who flee don't disappear — they arrive in the next city. That receiving city was rarely designed to absorb a sudden surge, and when it breaks, it pushes its own residents out too. No existing tool can see this chain reaction forming before it's already a crisis.**
 
-| What existing tools do | What Chain Reaction does |
+---
+
+### Background — What Is Happening and Why
+
+Atlantic Canada sits at the intersection of two accelerating trends that no existing tool treats as connected.
+
+**Trend 1 — Climate disasters are becoming more frequent and severe.** Environment Canada projects increased wildfire risk across New Brunswick's forests (83% forest cover), rising storm surge risk for Prince Edward Island's low-lying coastline, and more intense hurricane-season flooding for Nova Scotia — the province that absorbed the brunt of Hurricane Fiona in 2022.
+
+**Trend 2 — The receiving cities are already full.** Halifax has a 0.9% housing vacancy rate — the threshold for a housing crisis is 3%. Charlottetown had the fastest-rising rents in Canada in 2023 (CMHC). St. John's has an 11.4% unemployment rate. Background migration is already flowing along these corridors every single day: Newfoundland loses 5,500 people per year to Nova Scotia; New Brunswick loses 2,400 per year to Nova Scotia (StatCan CANSIM 17-10-0022-01). These cities have almost no spare capacity.
+
+**The geography locks in the vulnerability.** Four provinces are connected by a handful of fixed links: one Trans-Canada highway corridor, one 12.9 km bridge, and two ferry routes. When Moncton evacuates, the highway carries 2,700 people/hour. When St. John's evacuates, the only route out runs at 326 people/hour — a Marine Atlantic ferry. The same geography that makes Atlantic Canada beautiful makes it a bottleneck in a crisis.
+
+When a major disaster now hits any one of these cities, the receiving cities are already stressed, the routes are already constrained, and the cascade threshold is reached faster than anyone expects. The chain reaction is not a hypothetical. It is the predictable outcome of the current conditions — and it is invisible to every tool currently in use.
+
+---
+
+### Evidence
+
+**Fort McMurray 2016** — 88,000 people displaced by wildfire in 24 hours. Calgary and Edmonton absorbed the surge. Neither city conducted any ecological impact assessment of the influx. Planners counted beds. Nobody counted hectares, watershed draw, or carbon footprint shift.
+
+**California Camp Fire 2018** — 50,000 displaced from Paradise to Chico and Sacramento. Within 18 months: Chico's homeless population tripled, water demand exceeded watershed sustainable yield, and school enrollment collapsed as long-term residents were pushed out. None of this appeared in any pre-disaster plan.
+
+**Hurricane Fiona 2022 (Atlantic Canada)** — The actual number of displaced people was 4,800 (CMHC estimate) — a relatively contained event. Halifax still felt the pressure. A storm twice Fiona's intensity hitting New Brunswick would push 40,000+ people toward a city already at 0.9% housing vacancy. The cascade math is straightforward. The tool to show it has not existed — until now.
+
+**The pattern is consistent across every major displacement event:** the origin disaster gets modeled; the displaced headcount gets reported; the ecological chain reaction at the destination gets noticed 20 years too late, if at all.
+
+---
+
+### Who Is Affected and How
+
+**1 — The displaced people themselves.** Families forced to leave their homes with hours of notice. In our wildfire scenario alone: 47,200 people lose access to their employment, healthcare providers, schools, and social networks overnight. For conflict displacement (45% of exposed population, UNHCR 2023), only 20% ever return home. For drought, only 35%. The majority face permanent relocation — not a temporary inconvenience.
+
+**2 — Residents of the receiving cities.** The 465,000 people of Halifax, the 75,000 of Charlottetown — people who experienced no disaster — wake up to spiking rents, overloaded emergency rooms, overwhelmed water systems, and city infrastructure straining beyond its design capacity. When Halifax crosses 78% infrastructure stress, it begins forcing *its own residents* out. These are the invisible secondary victims: they did nothing wrong, and they have no warning.
+
+**3 — The ecosystems where people land.** Every 47,200 people arriving in Nova Scotia converts approximately **3,776 hectares** of Acadian Forest to urban land. Nova Scotia's biodiversity index drops below the fragmentation threshold — the point at which wildlife corridor connectivity collapses. Watershed stress rises. Carbon sinks are permanently removed. The ecological damage outlasts the human crisis by **15–30 years**. No planning tool currently tracks this consequence in real time.
+
+**4 — Emergency planners making blind decisions.** Municipal emergency managers, federal climate adaptation offices, and NGO field coordinators are currently pre-positioning resources, routing evacuees, and assessing cascade risk using historical precedent and gut instinct — with no real-time view of how the city network is absorbing the shock, where the next breaking point is, or which policy intervention would prevent the cascade from propagating.
+
+---
+
+### What Existing Solutions Miss
+
+| What existing tools do | The gap Chain Reaction fills |
 |---|---|
-| Model the hazard at origin | Model what the destination absorbs |
-| Count people displaced | Show multi-system ecological stress at receiving cities |
-| Static maps of at-risk zones | Live cascade propagating through a connected city network |
-| Separate pipelines: migration / land-use / water | One integrated view of the full chain reaction |
-| Assess damage after it's irreversible | Predict cascade collapse before it fires |
-
-### The evidence is consistent
-
-**Fort McMurray 2016** — 88,000 people displaced by wildfire to Calgary and Edmonton. Neither city had any ecological impact assessment of the influx. Only humanitarian bed counts.
-
-**California Camp Fire 2018** — 50,000 displaced to Chico and Sacramento. Chico's homelessness tripled in 18 months. Water demand exceeded watershed capacity. None of this was in any disaster plan.
-
-**Atlantic Canada today** — Newfoundland loses population to Nova Scotia every year. Halifax has a 0.9% housing vacancy rate and the fastest-rising rents outside PEI. A single major storm would push both cities past their absorption limits — and no tool currently shows where that breaking point is.
+| Model the hazard at the origin city | Model what the **destination** city absorbs — in real time |
+| Count people displaced | Show 6-system infrastructure stress at receiving cities as the surge arrives |
+| Static risk maps of at-risk zones | Live cascade propagating through a **connected city network** with real bottlenecks |
+| Separate pipelines: migration data / land-use / water indices | One integrated view: displacement → infrastructure stress → ecological consequence |
+| Assess environmental damage after it becomes irreversible | Predict cascade collapse **before it fires** and generate actionable interventions |
 
 ---
 
@@ -520,16 +554,34 @@ Response includes: `forest_loss_ha`, `carbon_delta_tonnes`, `watershed_stress`, 
 
 ## Real-World Impact
 
-### Who would use this
+### The scale of what is already happening in Atlantic Canada
 
-- **Emergency management agencies** — running pre-disaster scenario planning to understand where the breaking points are before a storm season
-- **NGOs (Red Cross, UNHCR field teams)** — pre-positioning aid along the likeliest cascade routes before evacuation orders go out
-- **Climate adaptation ministries** — justifying infrastructure investment ("investing in Halifax water capacity now reduces cascade risk during the next Fiona-scale flood")
-- **Infrastructure investors and insurers** — pricing receiving-end risk that current models cannot see
+| Metric | Real number | Source |
+|---|---|---|
+| Halifax housing vacancy rate | **0.9%** (crisis threshold is 3%) | CMHC 2023 |
+| Charlottetown rent increase | Fastest-rising in Canada | CMHC 2023 |
+| St. John's unemployment | **11.4%** | StatCan LFS 2023 |
+| NL → NS annual out-migration | **5,500 people/year** (background, no disaster) | StatCan CANSIM |
+| Acadian Forest converted per 47k displaced | **3,776 hectares** | Simulation (StatCan 0.08 ha/person) |
+| Time for full forest recovery | **15–30 years** | IPCC AR6 |
+| St. John's evacuation time (same disaster as Moncton) | **8 days vs 24 hours** | Marine Atlantic vs Transport Canada |
 
-### The specific gap this fills
+### Who the problem hurts right now
 
-Current tools model **origin risk** (where disasters strike) and **displacement counts** (how many people leave). No current tool integrates those numbers with **destination system stress** and **ecological consequence** across a connected network in real time. Chain Reaction fills that gap for Atlantic Canada — and the architecture generalizes to any bounded regional migration system with documented corridors.
+**Displaced families** — 47,200 people lose housing, jobs, healthcare, and community in a single wildfire event. For conflict or drought displacement, the majority never return (UNHCR: 20% return rate for conflict; FAO: 35% for drought). This is not temporary disruption. It is permanent relocation.
+
+**Receiving city residents** — Halifax's 465,000 residents absorb every major displacement event in the region. They experience rent spikes, overloaded emergency rooms, and deteriorating water systems — without having experienced any disaster themselves. When Halifax breaks under the pressure, it begins pushing its own people out. They become secondary victims of a disaster they never saw.
+
+**The ecosystems** — 3,776 hectares of Acadian Forest fragmented per major event. Biodiversity corridor connectivity collapses below the fragmentation threshold. Watershed stress rises 18 points. Carbon sinks removed permanently. The ecological damage outlasts the human crisis by decades — and no current tool tracks it.
+
+**Emergency planners** — Making routing, pre-positioning, and intervention decisions with no real-time view of how the city network is absorbing the shock. By the time cascade risk is visible in traditional systems, it has already propagated.
+
+### Who uses Chain Reaction to fix it
+
+- **Emergency management agencies** — running pre-disaster what-if scenarios to find the cascade breaking point before storm season begins
+- **NGOs (Red Cross, UNHCR)** — pre-positioning aid and shelter along the likeliest receiving-city cascade routes before evacuation orders go out
+- **Climate adaptation ministries** — justifying infrastructure investment with quantified cascade risk data ("investing $40M in Halifax water infrastructure now reduces cascade probability by X% during the next Fiona-scale event")
+- **Infrastructure investors and insurers** — pricing receiving-end climate risk that no current model exposes
 
 ---
 
