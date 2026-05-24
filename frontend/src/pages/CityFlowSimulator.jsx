@@ -8,15 +8,21 @@ import { ControlPanel } from '../components/cityflow/ControlPanel'
 import { OnboardingOverlay } from '../components/cityflow/OnboardingOverlay'
 import { EcoBridge } from '../components/cityflow/EcoBridge'
 import { CITY_PROVINCE_MAP, DISASTER_RECEIVER_MAP } from '../store/cityflowStore'
+import { useWeatherAutoTrigger } from '../hooks/useWeatherAutoTrigger'
 import '../components/cityflow/cityflow.css'
 
-function useSituationReport(cities, migrants, activeDisasters, cascadeCount, migrationPressure, totalDisplaced) {
+function useSituationReport(cities, migrants, activeDisasters, cascadeCount, migrationWeights, totalDisplaced) {
   return useMemo(() => {
     const disasterCities = cities.filter(c => c.isDisasterActive)
     const criticalCities = cities.filter(c => c.status === 'critical')
     const ecoWarning     = cities.find(c => (c.ecoScore ?? 100) < 65)
     const economicFlow   = migrants.filter(m => m.type === 'economic').reduce((s, m) => s + m.count, 0)
-    const pressureLabels = { economic_opportunity: 'economic opportunity', housing_affordability: 'housing affordability', climate_amenity: 'climate & lifestyle' }
+
+    // Derive dominant driver label from weights
+    const w = migrationWeights || {}
+    const dominantKey = Object.entries(w).sort((a, b) => b[1] - a[1])[0]?.[0] || 'economic'
+    const driverLabels = { economic: 'economic opportunity', housing: 'housing affordability', climate: 'climate & lifestyle' }
+    const dominantLabel = driverLabels[dominantKey] || 'economic opportunity'
 
     if (disasterCities.length >= 2) return { text: `Multi-city crisis — ${disasterCities.length} simultaneous disasters destabilising the entire regional network`, severity: 'critical', dot: '#FF375F' }
     if (cascadeCount > 0 && disasterCities.length > 0) {
@@ -36,9 +42,9 @@ function useSituationReport(cities, migrants, activeDisasters, cascadeCount, mig
       const lost = Math.round(100 - (ecoWarning.ecoScore ?? 100))
       return { text: `Ecological warning — ${ecoWarning.name} eco-health at ${Math.round(ecoWarning.ecoScore ?? 0)} (${lost} pts lost); in-migration converting habitat`, severity: 'info', dot: '#30D158' }
     }
-    if (economicFlow > 200) return { text: `${(economicFlow / 1000).toFixed(1)}k people in voluntary migration driven by ${pressureLabels[migrationPressure]} — land use quietly shifting`, severity: 'stable', dot: '#0A84FF' }
-    return { text: `Network in equilibrium. Background migration driven by ${pressureLabels[migrationPressure]} is the only force at work — slow, invisible, cumulative.`, severity: 'stable', dot: 'rgba(245,245,247,0.25)' }
-  }, [cities, migrants, activeDisasters, cascadeCount, migrationPressure, totalDisplaced])
+    if (economicFlow > 200) return { text: `${(economicFlow / 1000).toFixed(1)}k people in voluntary migration driven by ${dominantLabel} — land use quietly shifting`, severity: 'stable', dot: '#0A84FF' }
+    return { text: `Network in equilibrium. Background migration driven by ${dominantLabel} is the only force at work — slow, invisible, cumulative.`, severity: 'stable', dot: 'rgba(245,245,247,0.25)' }
+  }, [cities, migrants, activeDisasters, cascadeCount, migrationWeights, totalDisplaced])
 }
 
 export default function CityFlowSimulator() {
@@ -56,7 +62,7 @@ export default function CityFlowSimulator() {
   const totalDisplaced    = useCityFlowStore(state => state.sim.totalDisplaced)
   const cascadeCount      = useCityFlowStore(state => state.sim.cascadeCount)
   const cascadeAlert      = useCityFlowStore(state => state.sim.cascadeAlert)
-  const migrationPressure = useCityFlowStore(state => state.sim.migrationPressure)
+  const migrationWeights  = useCityFlowStore(state => state.sim.migrationWeights)
   const clearCascadeAlert = useCityFlowStore(state => state.clearCascadeAlert)
   const cities            = useCityFlowStore(state => state.cities)
   const migrants          = useCityFlowStore(state => state.migrants)
@@ -77,7 +83,9 @@ export default function CityFlowSimulator() {
   const lastCascadeId      = useRef(null)
   const autoPlayTimers     = useRef([])
 
-  const situation = useSituationReport(cities, migrants, activeDisasters, cascadeCount, migrationPressure, totalDisplaced)
+  useWeatherAutoTrigger()
+
+  const situation = useSituationReport(cities, migrants, activeDisasters, cascadeCount, migrationWeights, totalDisplaced)
   const avgEco    = Math.round(cities.reduce((s, c) => s + (c.ecoScore ?? 100), 0) / cities.length)
 
   useEffect(() => {
@@ -339,7 +347,7 @@ export default function CityFlowSimulator() {
 
       {/* ── Disaster resolution card ────────────────────────────────────── */}
       {disasterSummary && (
-        <div style={{ position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 50, width: 440, borderRadius: 18, overflow: 'hidden', background: 'rgba(7,8,15,0.97)', border: '1px solid rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.7)', backdropFilter: 'blur(24px)', animation: 'slideUp 0.3s ease' }}>
+        <div style={{ position: 'absolute', top: 68, left: '50%', transform: 'translateX(-50%)', zIndex: 50, width: 440, borderRadius: 18, overflow: 'hidden', background: 'rgba(7,8,15,0.97)', border: '1px solid rgba(255,255,255,0.10)', boxShadow: '0 32px 80px rgba(0,0,0,0.7)', backdropFilter: 'blur(24px)', animation: 'slideDown 0.3s ease' }}>
           <div style={{ height: 2, background: 'linear-gradient(90deg,#FF375F,#FF9F0A,#FFD60A)' }} />
           <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Header */}

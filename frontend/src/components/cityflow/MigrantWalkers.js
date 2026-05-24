@@ -1,4 +1,4 @@
-// Canvas renderer — routes, migrants (economic vs disaster), disaster glows, stress arcs, eco rings
+// Canvas renderer — routes, migrants, disaster glows, stress arcs, eco rings, queue indicators
 
 const DISASTER_COLORS = {
   wildfire:  { r: 255, g: 90,  b: 20  },
@@ -16,19 +16,55 @@ const DISASTER_LABELS = {
   drought:  '🏜️ DROUGHT',
 }
 
-// Eco-score → color
 function ecoColor(score) {
-  if (score > 80) return { r: 46,  g: 213, b: 115 } // green
-  if (score > 60) return { r: 255, g: 214, b: 0   } // yellow
-  if (score > 40) return { r: 255, g: 165, b: 0   } // orange
-  return               { r: 239, g: 68,  b: 68  }   // red
+  if (score > 80) return { r: 46,  g: 213, b: 115 }
+  if (score > 60) return { r: 255, g: 214, b: 0   }
+  if (score > 40) return { r: 255, g: 165, b: 0   }
+  return               { r: 239, g: 68,  b: 68  }
 }
+
 
 export class MigrantRenderer {
   constructor(canvas) {
-    this.canvas = canvas
-    this.ctx    = canvas.getContext('2d')
+    this.canvas     = canvas
+    this.ctx        = canvas.getContext('2d')
     this.frameCount = 0
+  }
+
+  drawPerson(x, y, scale = 1, walkCycle = 0, color = 'rgba(255,255,255,0.9)') {
+    const ctx = this.ctx
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.scale(scale, scale)
+    ctx.strokeStyle = color
+    ctx.fillStyle   = color
+    ctx.lineWidth   = 1.5
+    ctx.lineCap     = 'round'
+    ctx.lineJoin    = 'round'
+    ctx.shadowBlur  = 4
+    ctx.shadowColor = color
+    // Head
+    ctx.beginPath()
+    ctx.arc(0, -8, 2, 0, Math.PI * 2)
+    ctx.fill()
+    // Body
+    ctx.beginPath()
+    ctx.moveTo(0, -6)
+    ctx.lineTo(0, 2)
+    ctx.stroke()
+    // Arms
+    const arm = Math.sin(walkCycle) * 4
+    ctx.beginPath()
+    ctx.moveTo(0, -4); ctx.lineTo(-3 - arm, 1)
+    ctx.moveTo(0, -4); ctx.lineTo( 3 + arm, 1)
+    ctx.stroke()
+    // Legs
+    const leg = Math.sin(walkCycle) * 5
+    ctx.beginPath()
+    ctx.moveTo(0, 2); ctx.lineTo(-leg, 8)
+    ctx.moveTo(0, 2); ctx.lineTo( leg, 8)
+    ctx.stroke()
+    ctx.restore()
   }
 
   getBezierXY(t, sx, sy, cp1x, cp1y, cp2x, cp2y, ex, ey) {
@@ -38,46 +74,15 @@ export class MigrantRenderer {
     }
   }
 
-  drawPerson(x, y, scale = 1, walkCycle = 0, color = 'rgba(255,255,255,0.9)') {
+  resetCtx() {
     const ctx = this.ctx
-    ctx.save()
-    ctx.translate(x, y)
-    ctx.scale(scale, scale)
-
-    ctx.strokeStyle = color
-    ctx.fillStyle   = color
-    ctx.lineWidth   = 1.5
-    ctx.lineCap     = 'round'
-    ctx.lineJoin    = 'round'
-    ctx.shadowBlur  = 4
-    ctx.shadowColor = color
-
-    // Head
-    ctx.beginPath()
-    ctx.arc(0, -8, 2, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Body
-    ctx.beginPath()
-    ctx.moveTo(0, -6)
-    ctx.lineTo(0, 2)
-    ctx.stroke()
-
-    // Arms
-    const arm = Math.sin(walkCycle) * 4
-    ctx.beginPath()
-    ctx.moveTo(0, -4); ctx.lineTo(-3 - arm, 1)
-    ctx.moveTo(0, -4); ctx.lineTo( 3 + arm, 1)
-    ctx.stroke()
-
-    // Legs
-    const leg = Math.sin(walkCycle) * 5
-    ctx.beginPath()
-    ctx.moveTo(0, 2); ctx.lineTo(-leg, 8)
-    ctx.moveTo(0, 2); ctx.lineTo( leg, 8)
-    ctx.stroke()
-
-    ctx.restore()
+    ctx.shadowBlur   = 0
+    ctx.shadowColor  = 'transparent'
+    ctx.globalAlpha  = 1
+    ctx.lineWidth    = 1
+    ctx.setLineDash([])
+    ctx.lineCap      = 'butt'
+    ctx.lineJoin     = 'miter'
   }
 
   render(migrants, routes, cities, width, height) {
@@ -87,19 +92,10 @@ export class MigrantRenderer {
     // Lookup maps
     const cityMap = {}
     cities.forEach(c => { cityMap[c.id] = { x: (c.x / 100) * width, y: (c.y / 100) * height } })
+    this.resetCtx()
 
-    // Migrants per route (split by type)
-    const routeDisaster  = {}  // disaster + cascade
-    const routeEconomic  = {}  // economic
-    migrants.forEach(m => {
-      if (m.type === 'economic') {
-        routeEconomic[m.routeId]  = (routeEconomic[m.routeId]  || 0) + m.count
-      } else {
-        routeDisaster[m.routeId] = (routeDisaster[m.routeId] || 0) + m.count
-      }
-    })
 
-    // ─── 1. DISASTER GLOW HALOS ───────────────────────────────────────────
+    // ─── 1. DISASTER GLOW HALOS ──────────────────────────────────────────────
     cities.forEach(c => {
       if (!c.isDisasterActive || !c.disasterType) return
       const pos = cityMap[c.id]
@@ -141,7 +137,8 @@ export class MigrantRenderer {
       ctx.restore()
     })
 
-    // ─── 2. ROUTE LINES (always visible, dual-layer: economic + disaster) ─
+    this.resetCtx()
+    // ─── 2. ROUTE LINES — simple static dotted paths ────────────────────────
     routes.forEach(r => {
       const fromPos = cityMap[r.from]
       const toPos   = cityMap[r.to]
@@ -149,70 +146,19 @@ export class MigrantRenderer {
 
       const cpX = (r.cpX / 100) * width
       const cpY = (r.cpY / 100) * height
-      const disLoad = routeDisaster[r.id] || 0
-      const ecoLoad = routeEconomic[r.id] || 0
-      const anyLoad = disLoad + ecoLoad > 200
 
-      // Base dashed line — always visible
       ctx.beginPath()
       ctx.moveTo(fromPos.x, fromPos.y)
       ctx.bezierCurveTo(cpX, cpY, cpX, cpY, toPos.x, toPos.y)
       ctx.setLineDash([4, 10])
-      ctx.strokeStyle = anyLoad
-        ? `rgba(56,189,248,${Math.min(0.65, 0.1 + ((disLoad + ecoLoad) / 8000) * 0.55)})`
-        : 'rgba(56,189,248,0.07)'
-      ctx.lineWidth = anyLoad ? 1.5 + Math.min(2.5, (disLoad + ecoLoad) / 3000) : 1
+      ctx.strokeStyle = 'rgba(56,189,248,0.12)'
+      ctx.lineWidth   = 1
       ctx.stroke()
       ctx.setLineDash([])
-
-      // Economic flow: slow green dots
-      if (ecoLoad > 0) {
-        for (let i = 0; i < 3; i++) {
-          const t  = ((this.frameCount * 0.003 + i / 3) % 1)
-          const pt = this.getBezierXY(t, fromPos.x, fromPos.y, cpX, cpY, cpX, cpY, toPos.x, toPos.y)
-          ctx.fillStyle = `rgba(46,213,115,${0.35 + Math.sin(this.frameCount * 0.08 + i) * 0.15})`
-          ctx.beginPath()
-          ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      }
-
-      // Disaster flow: fast cyan/blue dots
-      if (disLoad > 0) {
-        for (let i = 0; i < 5; i++) {
-          const t  = ((this.frameCount * 0.008 + i / 5) % 1)
-          const pt = this.getBezierXY(t, fromPos.x, fromPos.y, cpX, cpY, cpX, cpY, toPos.x, toPos.y)
-          ctx.fillStyle = `rgba(56,189,248,${0.45 + Math.sin(this.frameCount * 0.12 + i) * 0.2})`
-          ctx.beginPath()
-          ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      }
-
-      // Count badges
-      if (anyLoad) {
-        const mid = this.getBezierXY(0.5, fromPos.x, fromPos.y, cpX, cpY, cpX, cpY, toPos.x, toPos.y)
-        const total = disLoad + ecoLoad
-        if (total > 400) {
-          const label = total >= 1000 ? `${(total / 1000).toFixed(1)}k` : `${total}`
-          ctx.save()
-          ctx.fillStyle   = 'rgba(13,17,23,0.85)'
-          ctx.strokeStyle = disLoad > 0 ? 'rgba(56,189,248,0.5)' : 'rgba(46,213,115,0.5)'
-          ctx.lineWidth   = 1
-          ctx.beginPath()
-          ctx.roundRect(mid.x - 18, mid.y - 20, 36, 14, 4)
-          ctx.fill()
-          ctx.stroke()
-          ctx.font         = 'bold 9px "JetBrains Mono", monospace'
-          ctx.textAlign    = 'center'
-          ctx.fillStyle    = disLoad > 0 ? '#38bdf8' : '#2ed573'
-          ctx.fillText(label, mid.x, mid.y - 10)
-          ctx.restore()
-        }
-      }
     })
 
-    // ─── 3. STRESS ARCS + ECO RINGS around each city ─────────────────────
+    this.resetCtx()
+    // ─── 3. STRESS ARCS + ECO RINGS + QUEUE INDICATORS ──────────────────────
     cities.forEach(c => {
       const pos = cityMap[c.id]
       if (!pos) return
@@ -226,7 +172,6 @@ export class MigrantRenderer {
       ctx.lineWidth   = 2
       ctx.stroke()
       if (eco < 99) {
-        // Show how much eco has been LOST (fill the lost portion in red)
         const lostFraction = (100 - eco) / 100
         ctx.beginPath()
         ctx.arc(pos.x, pos.y, 30, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * lostFraction)
@@ -254,16 +199,44 @@ export class MigrantRenderer {
         ctx.stroke()
         ctx.shadowBlur  = 0
       }
+
+      // Queue indicator — pulsing orange ring outside eco ring when people are waiting
+      // Size reflects queue relative to city population (bigger queue = bigger ring)
+      const queue = c.displacementQueue || 0
+      if (queue > 50) {
+        const queueFraction = Math.min(1, queue / (c.basePop * 0.3))
+        const ringRadius    = 36 + queueFraction * 10
+        const pulse         = 0.5 + Math.sin(this.frameCount * 0.12) * 0.3
+        ctx.beginPath()
+        ctx.arc(pos.x, pos.y, ringRadius, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(255,159,10,${0.3 + pulse * 0.4})`
+        ctx.lineWidth   = 2
+        ctx.shadowBlur  = 6
+        ctx.shadowColor = 'rgba(255,159,10,0.6)'
+        ctx.stroke()
+        ctx.shadowBlur  = 0
+
+        // Queue count label
+        ctx.save()
+        ctx.font      = 'bold 8px "JetBrains Mono", monospace'
+        ctx.textAlign = 'center'
+        ctx.fillStyle = `rgba(255,159,10,${0.7 + pulse * 0.3})`
+        const qLabel  = queue >= 1000 ? `${(queue / 1000).toFixed(1)}k` : `${queue}`
+        ctx.fillText(`⏳${qLabel}`, pos.x, pos.y + ringRadius + 10)
+        ctx.restore()
+      }
     })
 
-    // ─── 4. DRAW MIGRANTS ─────────────────────────────────────────────────
+    this.resetCtx()
+    // ─── 4. MIGRANT WAVES — walking figures clustered around each wave position ─
+    // Each wave object = one group of people moving along the route.
+    // Figure count, color, walk speed and scale reflect migration type and count.
     const routeMap = {}
     routes.forEach(r => { routeMap[r.id] = r })
 
     migrants.forEach(m => {
-      const route = routeMap[m.routeId]
+      const route    = routeMap[m.routeId]
       if (!route) return
-
       const fromNode = cityMap[m.from]
       const toNode   = cityMap[m.to]
       if (!fromNode || !toNode) return
@@ -280,41 +253,59 @@ export class MigrantRenderer {
 
       const isEconomic = m.type === 'economic'
       const isCascade  = m.type === 'cascade'
+      const isReturn   = m.type === 'return'
 
-      // Color & scale by migration type
       let figureColor, scale, numFigures, walkSpeed
 
-      if (isEconomic) {
-        // Orderly, slow — green/teal, smaller figures
-        figureColor = 'rgba(46,213,115,0.75)'
-        scale       = 0.65
-        numFigures  = Math.min(4, Math.max(1, Math.floor(m.count / 120)))
-        walkSpeed   = 0.08
+      if (isReturn) {
+        figureColor = 'rgba(200,220,255,0.85)'
+        scale       = 0.9
+        numFigures  = Math.min(6, Math.max(3, Math.floor(m.count / 80)))
+        walkSpeed   = 0.10
+      } else if (isEconomic) {
+        figureColor = 'rgba(46,213,115,0.90)'
+        scale       = 0.9
+        numFigures  = Math.min(6, Math.max(3, Math.floor(m.count / 80)))
+        walkSpeed   = 0.10
       } else if (isCascade) {
-        // Panicked cascade — bright white with red tint
-        figureColor = 'rgba(255,100,80,0.92)'
-        scale       = 0.85
-        numFigures  = Math.min(8, Math.max(3, Math.floor(m.count / 280)))
+        figureColor = 'rgba(255,100,80,0.95)'
+        scale       = 1.0
+        numFigures  = Math.min(10, Math.max(4, Math.floor(m.count / 150)))
         walkSpeed   = 0.22
       } else {
-        // Disaster refugees — origin city's disaster color
-        const originCity = cities.find(c => c.id === m.from)
-        if (originCity?.isDisasterActive && originCity.disasterType) {
-          const col = DISASTER_COLORS[originCity.disasterType]
-          figureColor = col
-            ? `rgba(${col.r},${col.g},${col.b},0.78)`
-            : 'rgba(255,255,255,0.88)'
-        } else {
-          figureColor = 'rgba(255,255,255,0.88)'
-        }
-        scale      = 0.8
-        numFigures = Math.min(8, Math.max(2, Math.floor(m.count / 250)))
-        walkSpeed  = 0.15
+        // Disaster refugees — wildfire=orange, flood=blue, conflict=red, heatwave=yellow, drought=brown
+        const originCity = cities.find(ci => ci.id === m.from)
+        const disType    = m.disasterType
+          || (originCity?.isDisasterActive ? originCity.disasterType : null)
+        const col        = disType ? DISASTER_COLORS[disType] : null
+        figureColor = col
+          ? `rgba(${col.r},${col.g},${col.b},0.95)`
+          : 'rgba(255,255,255,0.95)'
+        scale      = 1.0
+        numFigures = Math.min(10, Math.max(4, Math.floor(m.count / 150)))
+        walkSpeed  = 0.18
       }
 
+      // Compute route tangent at this position — figures march in a 2-wide column
+      // along the route direction rather than scattering in a random circle
+      const tA  = Math.max(0, progress - 0.02)
+      const tB  = Math.min(1, progress + 0.02)
+      const ptA = this.getBezierXY(tA, sx, sy, cpX, cpY, cpX, cpY, ex, ey)
+      const ptB = this.getBezierXY(tB, sx, sy, cpX, cpY, cpX, cpY, ex, ey)
+      const tdx = ptB.x - ptA.x
+      const tdy = ptB.y - ptA.y
+      const tlen = Math.sqrt(tdx * tdx + tdy * tdy) || 1
+      const ax  =  tdx / tlen   // along-route unit vector
+      const ay  =  tdy / tlen
+      const px  = -tdy / tlen   // perpendicular unit vector
+      const py  =  tdx / tlen
+
       for (let i = 0; i < numFigures; i++) {
-        const ox        = Math.sin(parseFloat(m.id) * 10 + i) * 14
-        const oy        = Math.cos(parseFloat(m.id) * 10 + i) * 14
+        // 2-wide column: even indices left, odd right; rows stagger back along route
+        const side     = (i % 2 === 0 ? -1 : 1)
+        const row      = Math.floor(i / 2)
+        const ox       = px * side * 5 - ax * row * 10
+        const oy       = py * side * 5 - ay * row * 10
         const walkCycle = (this.frameCount * walkSpeed) + (i * 1.5)
         this.drawPerson(pos.x + ox, pos.y + oy, scale, walkCycle, figureColor)
       }
