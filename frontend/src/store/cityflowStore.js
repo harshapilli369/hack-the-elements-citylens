@@ -163,6 +163,7 @@ export const useCityFlowStore = create((set, get) => ({
   migrants:  [],
   events:    [],
   tickCount: 0,
+  chainLog:  [],  // [{sourceId, destId, disasterType, displaced, eventType, timestamp}]
 
   sim: {
     isRunning:        true,
@@ -225,6 +226,7 @@ export const useCityFlowStore = create((set, get) => ({
       let newCascadeCount   = prev.sim.cascadeCount
       let newCascadeAlert   = prev.sim.cascadeAlert
       let newEcoBridge      = prev.sim.ecoBridge
+      let newChainLog       = prev.chainLog
 
       // ── 1. Disaster tick: stress + generate disaster migrants ──────────────
       updatedCities = updatedCities.map(city => {
@@ -253,6 +255,14 @@ export const useCityFlowStore = create((set, get) => ({
               disasterType:   city.disasterType,
               displaced:      Math.round(displaced),
             }
+            newChainLog = [...newChainLog, {
+              sourceId:    city.id,
+              destId:      receiverId || null,
+              disasterType: city.disasterType,
+              displaced:   Math.round(displaced),
+              eventType:   'disaster',
+              timestamp:   Date.now(),
+            }]
           }
         } else {
           // Generate fleeing migrants + accumulate displaced count
@@ -414,6 +424,14 @@ export const useCityFlowStore = create((set, get) => ({
                   { id: Date.now() + Math.random(), msg: `CASCADE: ${c.name} overloaded — forced evacuation`, severity: 'critical', time: new Date() },
                   ...newEvents,
                 ]
+                newChainLog = [...newChainLog, {
+                  sourceId:    c.id,
+                  destId:      targetId,
+                  disasterType: 'cascade',
+                  displaced:   count,
+                  eventType:   'cascade',
+                  timestamp:   Date.now(),
+                }]
               }
             }
           }
@@ -449,6 +467,7 @@ export const useCityFlowStore = create((set, get) => ({
         migrants:  remainingMigrants,
         events:    newEvents,
         tickCount: newTickCount,
+        chainLog:  newChainLog,
         sim: {
           ...prev.sim,
           activeDisasters,
@@ -472,6 +491,7 @@ export const useCityFlowStore = create((set, get) => ({
     cities:    JSON.parse(JSON.stringify(INITIAL_CITIES)),
     migrants:  [],
     tickCount: 0,
+    chainLog:  [],
     events:    [{ id: Date.now(), msg: 'Simulation reset — all cities returning to equilibrium', severity: 'info', time: new Date() }],
     sim: { ...s.sim, activeDisasters: 0, totalInTransit: 0, totalDisplaced: 0, cascadeCount: 0, cascadeAlert: null, ecoBridge: null, isRunning: true },
   })),

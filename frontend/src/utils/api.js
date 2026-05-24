@@ -22,4 +22,9 @@ export async function fetchRealtime() {
   return data
 }
 
+export async function runChainSimulation(payload) {
+  const { data } = await api.post('/simulate/chain', payload)
+  return data
+}
+
 export default api

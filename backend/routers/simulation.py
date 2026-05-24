@@ -2,7 +2,10 @@ import json
 import uuid
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
-from models.schemas import SimulationRequest, SimulationResult
+from models.schemas import (
+    SimulationRequest, SimulationResult,
+    ChainReactionRequest, ChainReactionResult, ChainGroupResult, ChainAggregated,
+)
 from engines.chain_engine import generate_timeline, generate_recommendations
 from engines.eco_engine import compute_destination_metrics, compute_source_metrics
 from engines.score_engine import compute_ecological_scorecard
@@ -87,6 +90,120 @@ def run_simulation(req: SimulationRequest):
     )
 
     CACHE[sim_id] = result
+    return result
+
+
+@router.post("/simulate/chain", response_model=ChainReactionResult)
+def run_chain_simulation(req: ChainReactionRequest):
+    if not req.events:
+        raise HTTPException(400, "No events provided")
+
+    reason = MIGRATION_REASONS.get("climate_displacement")
+    if not reason:
+        raise HTTPException(500, "climate_displacement reason not found")
+
+    # Validate all provinces and group by (source, dest) pair, summing population
+    grouped: dict = {}
+    for ev in req.events:
+        if ev.source_province not in PROVINCES:
+            raise HTTPException(404, f"Province '{ev.source_province}' not found")
+        if ev.destination_province not in PROVINCES:
+            raise HTTPException(404, f"Province '{ev.destination_province}' not found")
+        if ev.source_province == ev.destination_province:
+            continue
+        key = (ev.source_province, ev.destination_province)
+        if key not in grouped:
+            grouped[key] = {"population": 0, "event_count": 0, "event_types": set()}
+        grouped[key]["population"] += ev.population_size
+        grouped[key]["event_count"] += 1
+        grouped[key]["event_types"].add(ev.disaster_type)
+
+    if not grouped:
+        raise HTTPException(400, "No valid province pairs found in events")
+
+    group_results = []
+    all_scorecards = []
+    all_recs = []
+
+    for (src_name, dest_name), g in grouped.items():
+        source = PROVINCES[src_name]
+        dest   = PROVINCES[dest_name]
+        pop    = g["population"]
+
+        timelines  = generate_timeline(source, dest, pop, reason, req.duration_months)
+        dest_tl    = timelines["destination"]
+        src_tl     = timelines["source"]
+        final_dest = dest_tl[-1]
+        final_src  = src_tl[-1]
+        scorecard  = compute_ecological_scorecard(final_dest, final_src, source, dest, pop)
+
+        final_dest_metrics = compute_destination_metrics(dest, source, pop, reason, req.duration_months)
+        recs = generate_recommendations(final_dest_metrics, source, dest, pop, reason)
+        all_recs.extend(recs)
+        all_scorecards.append(scorecard)
+
+        group_results.append(ChainGroupResult(
+            source_province=src_name,
+            destination_province=dest_name,
+            total_population=pop,
+            event_count=g["event_count"],
+            event_types=list(g["event_types"]),
+            scorecard=scorecard,
+            destination_timeline=dest_tl,
+            source_timeline=src_tl,
+        ))
+
+    # Aggregate across all groups
+    total_pop     = sum(gr.total_population for gr in group_results)
+    total_carbon  = sum(s["total_carbon_delta_tonnes"] for s in all_scorecards)
+    total_forest  = sum(s["forest_loss_ha"] for s in all_scorecards)
+    total_rewild  = sum(s["source_rewilded_ha"] for s in all_scorecards)
+    max_stress    = max(s["ecological_stress"] for s in all_scorecards)
+    max_recovery  = max(s["recovery_years_estimate"] for s in all_scorecards)
+
+    severity_order = ["MINIMAL", "LOW", "MODERATE", "HIGH", "CRITICAL"]
+    max_sev = max(
+        (s["severity"] for s in all_scorecards),
+        key=lambda x: severity_order.index(x) if x in severity_order else 0,
+    )
+
+    provinces = list({p for gr in group_results for p in (gr.source_province, gr.destination_province)})
+    cascade_count = sum(1 for ev in req.events if ev.event_type == "cascade")
+
+    # Deduplicate recommendations by (category, priority), keep highest-priority per category
+    priority_order = ["critical", "high", "moderate", "positive", "low"]
+    all_recs.sort(key=lambda r: priority_order.index(r["priority"]) if r["priority"] in priority_order else 99)
+    seen: set = set()
+    deduped_recs = []
+    for rec in all_recs:
+        key = (rec["category"], rec["priority"])
+        if key not in seen:
+            seen.add(key)
+            deduped_recs.append(rec)
+
+    aggregated = ChainAggregated(
+        total_population_displaced=total_pop,
+        total_carbon_delta_tonnes=total_carbon,
+        total_forest_loss_ha=total_forest,
+        total_source_rewilded_ha=total_rewild,
+        max_ecological_stress=max_stress,
+        max_severity=max_sev,
+        provinces_affected=provinces,
+        recovery_years_estimate=max_recovery,
+        event_count=len(req.events),
+        cascade_count=cascade_count,
+    )
+
+    sim_id = str(uuid.uuid4())[:8]
+    result = ChainReactionResult(
+        id=sim_id,
+        groups=group_results,
+        aggregated=aggregated,
+        recommendations=deduped_recs[:6],
+        duration_months=req.duration_months,
+    )
+
+    CACHE[f"chain_{sim_id}"] = result
     return result
 
 

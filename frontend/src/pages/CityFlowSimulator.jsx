@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCityFlowStore } from '../store/cityflowStore'
 import { useSimulationStore } from '../store/simulationStore'
+import { useChainStore } from '../store/chainStore'
 import { SimulationMap } from '../components/cityflow/SimulationMap'
 import { ControlPanel } from '../components/cityflow/ControlPanel'
 import { OnboardingOverlay } from '../components/cityflow/OnboardingOverlay'
@@ -60,9 +61,11 @@ export default function CityFlowSimulator() {
   const cities            = useCityFlowStore(state => state.cities)
   const migrants          = useCityFlowStore(state => state.migrants)
   const events            = useCityFlowStore(state => state.events)
+  const chainLog          = useCityFlowStore(state => state.chainLog)
   const triggerDisaster   = useCityFlowStore(state => state.triggerDisaster)
   const selectCity        = useCityFlowStore(state => state.selectCity)
   const simStore          = useSimulationStore()
+  const chainStore        = useChainStore()
 
   const [disasterSummary, setDisasterSummary] = useState(null)
   const [cascadeBanner,   setCascadeBanner]   = useState(null)
@@ -149,21 +152,60 @@ export default function CityFlowSimulator() {
     window.addEventListener('mouseup', onUp)
   }
 
-  function handleBridgeToEcological() {
-    const sorted     = [...cities].sort((a, b) => (b.basePop - b.pop) - (a.basePop - a.pop))
-    const sourceCity = sorted[0]
-    const destCity   = sorted.find(c => c.pop > c.basePop) || cities.find(c => c.id !== sourceCity.id)
-    const displaced  = Math.max(50000, Math.min(800000, Math.round(Math.abs(sourceCity.basePop - sourceCity.pop))))
-    const sourceProvince = CITY_PROVINCE_MAP[sourceCity?.id]?.province || 'New Brunswick'
-    const destProvince   = CITY_PROVINCE_MAP[destCity?.id]?.province   || 'Nova Scotia'
-    const params = new URLSearchParams({
-      source:  sourceProvince,
-      dest:    destProvince,
-      pop:     String(displaced || 200000),
-      reason:  'climate_displacement',
-      autorun: '1',
-    })
-    navigate(`/simulate?${params.toString()}`)
+  async function handleBridgeToEcological() {
+    // If chainLog has entries, run full chain analysis
+    const validEntries = chainLog.filter(
+      e => e.destId && CITY_PROVINCE_MAP[e.sourceId] && CITY_PROVINCE_MAP[e.destId]
+    )
+
+    if (validEntries.length === 0) {
+      // Fallback: disaster still active, no resolved events yet — single-event to /simulate
+      const sorted     = [...cities].sort((a, b) => (b.basePop - b.pop) - (a.basePop - a.pop))
+      const sourceCity = sorted[0]
+      const destCity   = sorted.find(c => c.pop > c.basePop) || cities.find(c => c.id !== sourceCity.id)
+      const displaced  = Math.max(50000, Math.min(800000, Math.round(Math.abs(sourceCity.basePop - sourceCity.pop))))
+      const sourceProvince = CITY_PROVINCE_MAP[sourceCity?.id]?.province || 'New Brunswick'
+      const destProvince   = CITY_PROVINCE_MAP[destCity?.id]?.province   || 'Nova Scotia'
+      const params = new URLSearchParams({
+        source: sourceProvince, dest: destProvince,
+        pop: String(displaced || 200000), reason: 'climate_displacement', autorun: '1',
+      })
+      navigate(`/simulate?${params.toString()}`)
+      return
+    }
+
+    // Build events array for chain endpoint
+    const events = validEntries.map(e => ({
+      source_province:      CITY_PROVINCE_MAP[e.sourceId].province,
+      destination_province: CITY_PROVINCE_MAP[e.destId].province,
+      population_size:      Math.max(1000, e.displaced),
+      disaster_type:        e.disasterType,
+      event_type:           e.eventType,
+    }))
+
+    chainStore.reset()
+    chainStore.setCityStates(cities.map(c => ({
+      id: c.id, name: c.name,
+      province: CITY_PROVINCE_MAP[c.id]?.province,
+      pop: c.pop, basePop: c.basePop,
+      stress: Math.round(c.stress),
+      ecoScore: Math.round(c.ecoScore ?? 100),
+      status: c.status,
+    })))
+    chainStore.setLoading(true)
+    navigate('/chain-analysis')
+
+    try {
+      const res = await fetch('/api/simulate/chain', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ events, duration_months: 24 }),
+      })
+      if (!res.ok) throw new Error(`API error ${res.status}`)
+      chainStore.setResult(await res.json())
+    } catch (err) {
+      chainStore.setError(err.message)
+    }
   }
 
   const fmtK = n => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`

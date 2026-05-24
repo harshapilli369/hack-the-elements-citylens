@@ -1,43 +1,60 @@
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useCityFlowStore } from '../../store/cityflowStore'
-import { CITY_PROVINCE_MAP, DISASTER_RECEIVER_MAP } from '../../store/cityflowStore'
-
-const DISASTER_REASON = {
-  wildfire: 'climate_displacement',
-  flood:    'climate_displacement',
-  conflict: 'climate_displacement',
-  heatwave: 'climate_displacement',
-  drought:  'climate_displacement',
-}
+import { useCityFlowStore, CITY_PROVINCE_MAP } from '../../store/cityflowStore'
+import { useChainStore } from '../../store/chainStore'
 
 const DISASTER_LABEL = {
-  wildfire: 'Wildfire',
-  flood:    'Flood',
-  conflict: 'Conflict',
-  heatwave: 'Heatwave',
-  drought:  'Drought',
+  wildfire: 'Wildfire', flood: 'Flood', conflict: 'Conflict',
+  heatwave: 'Heatwave', drought: 'Drought',
 }
 
 export function EcoBridge() {
   const navigate      = useNavigate()
   const ecoBridge     = useCityFlowStore(s => s.sim.ecoBridge)
+  const chainLog      = useCityFlowStore(s => s.chainLog)
+  const cities        = useCityFlowStore(s => s.cities)
   const dismissBridge = useCityFlowStore(s => s.dismissEcoBridge)
+  const chainStore    = useChainStore()
 
-  function handleModel() {
+  async function handleModel() {
     if (!ecoBridge) return
-    const sourceProvince = CITY_PROVINCE_MAP[ecoBridge.sourceCityId]?.province
-    const destProvince   = CITY_PROVINCE_MAP[ecoBridge.destCityId]?.province
-    const reason         = DISASTER_REASON[ecoBridge.disasterType] || 'climate_disaster'
-    const params = new URLSearchParams({
-      source:      sourceProvince || '',
-      dest:        destProvince   || '',
-      pop:         String(ecoBridge.displaced),
-      reason,
-      autorun:     '1',
-    })
     dismissBridge()
-    navigate(`/simulate?${params.toString()}`)
+
+    const validEntries = chainLog.filter(
+      e => e.destId && CITY_PROVINCE_MAP[e.sourceId] && CITY_PROVINCE_MAP[e.destId]
+    )
+
+    const events = validEntries.map(e => ({
+      source_province:      CITY_PROVINCE_MAP[e.sourceId].province,
+      destination_province: CITY_PROVINCE_MAP[e.destId].province,
+      population_size:      Math.max(1000, e.displaced),
+      disaster_type:        e.disasterType,
+      event_type:           e.eventType,
+    }))
+
+    chainStore.reset()
+    chainStore.setCityStates(cities.map(c => ({
+      id: c.id, name: c.name,
+      province: CITY_PROVINCE_MAP[c.id]?.province,
+      pop: c.pop, basePop: c.basePop,
+      stress: Math.round(c.stress),
+      ecoScore: Math.round(c.ecoScore ?? 100),
+      status: c.status,
+    })))
+    chainStore.setLoading(true)
+    navigate('/chain-analysis')
+
+    try {
+      const res = await fetch('/api/simulate/chain', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ events, duration_months: 24 }),
+      })
+      if (!res.ok) throw new Error(`API error ${res.status}`)
+      chainStore.setResult(await res.json())
+    } catch (err) {
+      chainStore.setError(err.message)
+    }
   }
 
   return (
@@ -60,35 +77,36 @@ export function EcoBridge() {
             backdropFilter: 'blur(20px)',
           }}>
 
-          {/* Dismiss */}
-          <button
-            onClick={dismissBridge}
+          <button onClick={dismissBridge}
             style={{ position: 'absolute', top: 12, right: 12, width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', color: 'rgba(245,245,247,0.35)', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             ✕
           </button>
 
-          {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(48,209,88,0.12)', border: '1px solid rgba(48,209,88,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>🌿</div>
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#F5F5F7', letterSpacing: '-0.2px' }}>Chain Reaction Detected</div>
-              <div style={{ fontSize: 10, color: 'rgba(245,245,247,0.35)', marginTop: 1 }}>Disaster resolved · displacement logged · ecological impact unknown</div>
+              <div style={{ fontSize: 10, color: 'rgba(245,245,247,0.35)', marginTop: 1 }}>
+                Disaster resolved · {chainLog.length} event{chainLog.length !== 1 ? 's' : ''} logged · ecological impact unknown
+              </div>
             </div>
           </div>
 
-          {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
             <StatCell label="Displaced" value={ecoBridge.displaced.toLocaleString()} color="#FF9F0A" />
             <StatCell label="From" value={CITY_PROVINCE_MAP[ecoBridge.sourceCityId]?.province || ecoBridge.sourceName} color="#FF375F" />
-            <StatCell label="To" value={CITY_PROVINCE_MAP[ecoBridge.destCityId]?.province || ecoBridge.destName} color="#0A84FF" />
+            <StatCell label="To"   value={CITY_PROVINCE_MAP[ecoBridge.destCityId]?.province   || ecoBridge.destName}   color="#0A84FF" />
           </div>
 
-          {/* Prompt */}
           <div style={{ fontSize: 12, color: 'rgba(245,245,247,0.45)', lineHeight: 1.6, marginBottom: 16 }}>
-            {ecoBridge.displaced.toLocaleString()} people displaced by a <span style={{ color: '#FF9F0A', fontWeight: 600 }}>{DISASTER_LABEL[ecoBridge.disasterType] || ecoBridge.disasterType}</span> are heading to <span style={{ color: '#0A84FF', fontWeight: 600 }}>{CITY_PROVINCE_MAP[ecoBridge.destCityId]?.province || ecoBridge.destName}</span>. What does this do to the land, water, and air systems there?
+            {ecoBridge.displaced.toLocaleString()} people displaced by a{' '}
+            <span style={{ color: '#FF9F0A', fontWeight: 600 }}>{DISASTER_LABEL[ecoBridge.disasterType] || ecoBridge.disasterType}</span>
+            {chainLog.length > 1 && (
+              <> · plus <span style={{ color: '#FF375F', fontWeight: 600 }}>{chainLog.length - 1} additional event{chainLog.length > 2 ? 's' : ''}</span> in the chain</>
+            )}
+            . See the full ecological impact across all affected provinces.
           </div>
 
-          {/* CTA */}
           <motion.button
             onClick={handleModel}
             whileHover={{ scale: 1.02 }}
@@ -98,7 +116,7 @@ export function EcoBridge() {
               background: '#30D158', color: '#07080F', fontSize: 13, fontWeight: 700, letterSpacing: '-0.2px',
               boxShadow: '0 0 20px rgba(48,209,88,0.35)',
             }}>
-            🔬 Model the Ecological Chain Reaction →
+            🔬 Analyse all {chainLog.length} event{chainLog.length !== 1 ? 's' : ''} ecologically →
           </motion.button>
         </motion.div>
       )}

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 
 
 class SimulationRequest(BaseModel):
@@ -84,3 +84,50 @@ class SimulationResult(BaseModel):
     destination_timeline: List[DestinationTimelinePoint]
     source_timeline: List[SourceTimelinePoint]
     recommendations: List[Recommendation]
+
+
+# ── Chain reaction schemas ────────────────────────────────────────────────────
+
+class ChainEvent(BaseModel):
+    source_province: str
+    destination_province: str
+    population_size: int
+    disaster_type: str   # wildfire, flood, cascade, etc.
+    event_type: str      # "disaster" or "cascade"
+
+
+class ChainReactionRequest(BaseModel):
+    events: List[ChainEvent]
+    duration_months: int = 24
+
+
+class ChainGroupResult(BaseModel):
+    source_province: str
+    destination_province: str
+    total_population: int
+    event_count: int
+    event_types: List[str]
+    scorecard: EcologicalScorecard
+    destination_timeline: List[DestinationTimelinePoint]
+    source_timeline: List[SourceTimelinePoint]
+
+
+class ChainAggregated(BaseModel):
+    total_population_displaced: int
+    total_carbon_delta_tonnes: float
+    total_forest_loss_ha: float
+    total_source_rewilded_ha: float
+    max_ecological_stress: float
+    max_severity: str
+    provinces_affected: List[str]
+    recovery_years_estimate: int
+    event_count: int
+    cascade_count: int
+
+
+class ChainReactionResult(BaseModel):
+    id: str
+    groups: List[ChainGroupResult]
+    aggregated: ChainAggregated
+    recommendations: List[Recommendation]
+    duration_months: int
